@@ -31,12 +31,10 @@ def get_variables_command(sources:dict,project:str):
     for varName,param in sources.items():
         yield f"{varName} = \"{param}\""
 
-
 def mkdirs(path):
-    if  os.path.exists:
-        return
-    else:
+    if not os.path.exists(path):
         os.makedirs(path)
+    return True
 
 def wrap_cmd(cmd:str,project:str,part:str,need:bool=True):
     reptimes=5

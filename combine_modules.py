@@ -31,6 +31,7 @@ def process(config:dict,root_out_dir=""):
             outdir=os.path.join(os.getcwd(),this_config["outdir"])
         else:
             outdir=os.path.abspath(root_out_dir)
+        mkdirs(outdir)
         for part in this_config["order"]:
             partname=part.strip().split("/")[0]
             func=METHOD[partname]
