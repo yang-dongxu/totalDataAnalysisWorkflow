@@ -39,7 +39,7 @@
                     "--fastqc":"",
                     "--fastqc_args":"\"--threads 8 \"",
                     " ":"{iseq1} {iseq2}",
-                    "--output_dir":"{outdir}",//可以调整，不应该删除
+                    "-o":"{outdir}",//可以调整，不应该删除
                 },
                 "outparams":
                 {

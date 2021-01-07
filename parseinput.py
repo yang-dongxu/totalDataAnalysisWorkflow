@@ -25,7 +25,7 @@ def parse_inputfile(config:dict,seqs:str):
             lineSplit=lineSplit+[DEFAULT_CONFIG_ID]
         for i in range(0,len(names)):
             term=names[i]
-            value=lineSplit[i]
+            value=lineSplit[i].strip()
             Intermedia.add_term(part,project,term,value)
             cmd=f'echo "###### start process pipline ######"'
             cmd_part="1"
