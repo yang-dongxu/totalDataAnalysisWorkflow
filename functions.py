@@ -38,8 +38,8 @@ def mkdirs(path):
 
 def wrap_cmd(cmd:str,project:str,part:str,need:bool=True):
     reptimes=5
-    header=f"echo \"{'#'*reptimes} start f{project} f{part}  {'#'*reptimes}\" \n"
-    footer=f"echo \"{'#'*reptimes} stop f{project} f{part}  {'#'*reptimes}\" \n"
+    header=f"echo \"{'#'*reptimes} start {project} {part}  {'#'*reptimes}\" \n"
+    footer=f"echo \"{'#'*reptimes} stop {project} {part}  {'#'*reptimes}\" \n"
 
     return header+cmd.strip()+"\n"+footer
 
