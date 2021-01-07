@@ -2,7 +2,7 @@
     //This is the default config file for TRS pipline
     //any params given in "param_name":[true, "param"] will appear as --param_name param in the cmdline
     //or params which are not lists will give to this scripts directly, so don't delete them
-    "seq_info_format":[",","project","seq1","seq2","config_id"], 
+    "seq_info_format":["","project","seq1","seq2","config_id"], 
     //define the format of input seqs here, config_id will be "DEFAULT" as default,and the first one is delimeter, and second term must be project, which is an id
     "DEFAULT":{
         "order":["trim","STAR","featureCounts","format","redistribute"],
@@ -12,7 +12,6 @@
         "log_name":"trs.log",
         "outdir":"trsout", 
         //the params in the command line when you run this will overwrite this if provided
-        "cmd_part_id":{"1":"1"}, 
         //devide cmd to several parsts, if you has some cmds must excute after some other ones finished. key is the id used below, and value is cmd file suffix
         "cmd_fusion_order":["1"], 
         //how to fusion different parts of cmd, values is the id above

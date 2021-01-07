@@ -38,6 +38,13 @@ def mkdirs(path):
     else:
         os.makedirs(path)
 
+def wrap_cmd(cmd:str,project:str,part:str,need:bool=True):
+    reptimes=5
+    header=f"echo \"{'#'*reptimes} start f{project} f{part}  {'#'*reptimes}\" \n"
+    footer=f"echo \"{'#'*reptimes} stop f{project} f{part}  {'#'*reptimes}\" \n"
+
+    return header+cmd.strip()+"\n"+footer
+
     
 def regular_pipeline(config,part,project,outdir):
     ##set variables from config or father
@@ -64,6 +71,7 @@ def regular_pipeline(config,part,project,outdir):
 
     ##generate cmd
     cmd=f"{software} {paset_modifi_params(params=params,values=locals())} "
+    cmd=wrap_cmd(cmd,project,part,config["need"])
     #print(cmd)
 
     ##check path
