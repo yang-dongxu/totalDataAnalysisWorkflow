@@ -1,0 +1,154 @@
+{
+    //This is the default config file for TRS pipline
+    //any params given in "param_name":[true, "param"] will appear as --param_name param in the cmdline
+    //or params which are not lists will give to this scripts directly, so don't delete them
+    "seq_info_format":[",","project","seq1","seq2","config_id"], 
+    //define the format of input seqs here, config_id will be "DEFAULT" as default,and the first one is delimeter, and second term must be project, which is an id
+    "DEFAULT":{
+        "order":["trim","STAR","featureCounts","format","redistribute"],
+        /* order to perform functions, can define self here, if need to run some funcions, input like this "featureCounts/1",they will call up same parse functions*/
+        "order_multiprojects":["generate_cmd"],
+        "cmd_name":"trs.cmd",
+        "log_name":"trs.log",
+        "outdir":"trsout", 
+        //the params in the command line when you run this will overwrite this if provided
+        "cmd_part_id":{"1":"1"}, 
+        //devide cmd to several parsts, if you has some cmds must excute after some other ones finished. key is the id used below, and value is cmd file suffix
+        "cmd_fusion_order":["1"], 
+        //how to fusion different parts of cmd, values is the id above
+        "workflow":
+        {
+            "trim":
+            {
+                "need":true, 
+                // if turn it to false, the command will not run actually but just give the position of files it should give to below pipline, may cause error!
+                "father":{"iseq1":["raw","seq1"],"iseq2":["raw","seq2"]},
+                "path":"trim_galore", 
+                //path of the sorfware
+                "outdir":"trimed",
+                "cmd_part":"1",
+                "variables":
+                {
+
+                },//define varibales you want to use in params, beside this you can use outdir and project, and variables defined in father
+                "check_paths":[],
+                "params":{
+                    "--paired":"",
+                    "--adapter":"",
+                    "--length":"20",
+                    "--fastqc":"",
+                    "--fastqc_args":"\"--threads 8 \"",
+                    "--output_dir":"{outdir}",//可以调整，不应该删除
+                    " ":"{iseq1} {iseq2}"
+                },
+                "outparams":
+                {
+                    "example":"{project}/hello",
+                    //this example can transfer variables to other modules
+                }
+            },
+            "STAR":
+            {
+                "need":true,
+                "father":{"iseq1":["trim","oseq1"],"iseq2":["trim","oseq2"]},
+                //here defines what it should extract info and where it extract from. 
+                //Correspondingly, the father should give these attributes to the intermedia
+                //the key is used to extract infomation, the first one in list is the source of information
+                //if "byhand" ,means get these information provided by other inputs in json format, the first param in list is the filename
+                //if  "raw" ,means get these information from seq_info_format table defined by top
+                //
+                "check_paths":[],
+                "path":"STAR",
+                "cmd_part":"1",
+                "outdir":"star",
+
+                "params":{
+                    "--genomeDir":"/mnt/Storage2/home/DB/STAR/hg38",
+                    "--runThreadN":"10",
+                    "--outSAMattributes":"NH HI NM MD XS AS",
+                    "--outFilterMultimapNmax":"500",
+                    "--outSAMtype":"BAM SortedByCoordinate",//don't change this
+                    "--readFilesCommand":"zcat",
+                    "--readFilesIn":"{iseq1}  {iseq2}",
+                    "--outFileNamePrefix":"{outdir}/{project}/{project}_",
+                    //outdir is a variabbe, will replace by os.path.join(root_outdir,outdir)
+                }
+
+            },
+            "featureCounts":
+            {
+                "need":true,
+                "father":{"ibam":["STAR","obam_sorted"]},
+                "path":"featureCounts",
+                "check_paths":[],
+                "cmd_part":"1",
+                "outdir":"features",
+
+                "params":
+                {
+                    "-g":"gene_id",
+                    //metagene option
+                    "-O":" ",
+                    //allow overlap
+                    "--fracOverlap":"0.1",
+                    //max overlap fraction
+                    "-p":" ",
+                    //pair end
+                    "-B":" ",
+                    "-M":" ",
+                    //allow  multi mapping
+                    "--fraction":" ", 
+                    // if counts fractional if a reads overlap of multimapping
+                    "-T":"10", 
+                    // threads
+                    "-a":"/mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.gtf", 
+                    // annoation file
+                    "-R":"BAM",
+                    //output feature count results in bam format
+                    "-o":"{outdir}/{project}/{project}_featurecounts",
+                    " ":"{ibam}"
+                },
+
+            },
+            "format":
+            {
+                "need":true,
+                "father":{ibam:["featureCounts","obam"]},
+                "path":"samtools view",
+                "check_paths":[],
+                "cmd_part":"1",
+                "outdir":"features",
+
+                "params":
+                {
+                    "-@":"10",
+                    " ":"-x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x XN -x XS -x XS",
+                    "| grep -e": "XT:Z",
+                    ">":"{outdir}/{project}/{project}_featurecounts.sam.txt"
+                }
+
+            },
+            "redistribute":
+            {
+                "need":true,
+                "father":{"isam":["format","osam"]},
+                "path":"redistribute",
+                "check_paths":[],
+                "cmd_part":"1",
+                "outdir":"features",
+                "params":
+                {
+                    "-r":"/mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.saf",
+                    "-s":"50",
+                    "-m":1,
+                    "-p":"12",
+                    //threads
+                    "-n":"{outdir}/{project}/{project}_distribution.txt",
+                    "-f":"{isam}"
+                }
+
+            }
+        },
+
+    }
+}
