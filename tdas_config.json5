@@ -33,7 +33,6 @@
                 "check_paths":[],
                 "params":{
                     "--paired":"",
-                    "--adapter":"",
                     "--length":"20",
                     "--quality":"20",
                     "--fastqc":"",
