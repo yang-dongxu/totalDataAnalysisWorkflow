@@ -5,6 +5,11 @@ import logging
 from copy import deepcopy
 from Intermedia import Intermedia
 
+def mkdirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return True
+
 
 def paste_params(params:dict):
     params_list=[]
@@ -31,10 +36,6 @@ def get_variables_command(sources:dict,project:str):
     for varName,param in sources.items():
         yield f"{varName} = \"{param}\""
 
-def mkdirs(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-    return True
 
 def wrap_cmd(cmd:str,project:str,part:str,need:bool=True):
     reptimes=5
@@ -49,7 +50,8 @@ def regular_pipeline(config,part,project,outdir):
     part=part
     project=project
     software=config["path"]
-    params=config["params"]    
+    params=config["params"]
+    outdir=os.path.join(outdir,config["outdir"])    
     for cmd in get_father_params_command(config["father"],project):
         exec(cmd)
     
@@ -91,8 +93,6 @@ def regular_pipeline(config,part,project,outdir):
 
 def trim(config:dict,outdir:str,project:str,part:str="trim"):
 
-    outdir=os.path.join(outdir,config["outdir"])
-
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
 
     ##store values to Intermedia
@@ -100,6 +100,7 @@ def trim(config:dict,outdir:str,project:str,part:str="trim"):
     iseq2=os.path.split(variables["iseq2"])[-1]
     suffix_oseq1="_val_1.fq.gz"
     suffix_oseq2="_val_2.fq.gz"
+    outdir=variables["outdir"]
     if iseq1[:-6][-1]=="1":
         oseq1=os.path.join(outdir,iseq1+suffix_oseq1)
         oseq2=os.path.join(outdir,iseq2+suffix_oseq2)
@@ -116,14 +117,15 @@ def trim(config:dict,outdir:str,project:str,part:str="trim"):
 
     
 def star(config:dict,outdir:str,project:str,part:str="STAR"):
-    outdir=os.path.join(outdir,config["outdir"])
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
 
     ##store values to Intermedia
     iseq1=variables["iseq1"]
     iseq2=variables["iseq2"]
+    outdir=variables["outdir"]
 
     outprefix=config["params"]["--outFileNamePrefix"].format_map(variables)
+    mkdirs(os.path.split(outprefix)[0])
     obam_sorted=outprefix+"Aligned.sortedByCoord.out.bam"
     ologfinalout=outprefix+"Log.final.out"
     ologout=outprefix+"Log.out"
@@ -141,7 +143,6 @@ def star(config:dict,outdir:str,project:str,part:str="STAR"):
     return cmd,cmd_part
 
 def featureCounts(config:dict,outdir:str,project:str,part:str="featureCounts"):
-    outdir=os.path.join(outdir,config["outdir"])
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
 
     ibam=variables["ibam"]
@@ -149,6 +150,7 @@ def featureCounts(config:dict,outdir:str,project:str,part:str="featureCounts"):
     ofeatures=outprefix
     osummary=outprefix+".summary"
     obam=ibam+".featureCounts.bam"
+    outdir=variables["outdir"]
 
     Intermedia.add_term(part=part,project=project,term="ibam",value=ibam)
     Intermedia.add_term(part=part,project=project,term="ofeatures",value=ofeatures)
@@ -159,8 +161,8 @@ def featureCounts(config:dict,outdir:str,project:str,part:str="featureCounts"):
 
 
 def format(config:dict,outdir:str,project:str,part:str="format"):
-    outdir=os.path.join(outdir,config["outdir"])
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
+    outdir=variables["outdir"]
 
     ibam=variables["ibam"]
     osam=config["params"][">"].format_map(variables)
@@ -171,8 +173,8 @@ def format(config:dict,outdir:str,project:str,part:str="format"):
     return cmd,cmd_part
 
 def redistribute(config:dict,outdir:str,project:str,part:str="redistribute"):
-    outdir=os.path.join(outdir,config["outdir"])
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
+    outdir=variables["outdir"]
 
     isam=variables["isam"]
     otab=config["params"]["-n"].format_map(variables)

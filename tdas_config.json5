@@ -60,7 +60,10 @@
                 "path":"STAR",
                 "cmd_part":"1",
                 "outdir":"star",
-
+                "variables":
+                {
+                    
+                },
                 "params":{
                     "--genomeDir":"/mnt/Storage2/home/DB/STAR/hg38",
                     "--runThreadN":"10",
@@ -71,6 +74,9 @@
                     "--readFilesIn":"{iseq1}  {iseq2}",
                     "--outFileNamePrefix":"{outdir}/{project}/{project}_",
                     //outdir is a variabbe, will replace by os.path.join(root_outdir,outdir)
+                },
+                "outparams":
+                {
                 }
 
             },
