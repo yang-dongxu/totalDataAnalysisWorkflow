@@ -53,9 +53,10 @@ def regular_pipeline(config,part,project,outdir):
     project=project
     software=config["path"]
     params=config["params"]
-    outdir=os.path.join(outdir,config["outdir"])    
-    for cmd in get_father_params_command(config["father"],project):
-        exec(cmd)
+    outdir=os.path.join(outdir,config["outdir"]) if "outdir" in config else os.path.join(outdir,part) 
+    if "father" in config:    
+        for cmd in get_father_params_command(config["father"],project):
+            exec(cmd)
     
     if "variables" in config:
         for cmd in get_variables_command(config["variables"],project):
@@ -80,14 +81,15 @@ def regular_pipeline(config,part,project,outdir):
     #print(cmd)
 
     ##check path
-    for path in config["check_paths"]:
-        assert isinstance(path,str)
-        assert os.path.exists(path.format_map(locals()))
+    if "check_paths" in config:
+        for path in config["check_paths"]:
+            assert isinstance(path,str)
+            assert os.path.exists(path.format_map(locals()))
     
 
     ##add command and command part id to intermedia
-    cmd_part=config["cmd_part"]
-    need=config["need"]
+    cmd_part=config["cmd_part"] if "cmd_part" in config else "1"
+    need=config["need"] if "need" in config else True
     Intermedia.add_term(part=part,project=project,term="command",value=cmd)
     Intermedia.add_term(part=part,project=project,term="command_part",value=cmd_part)
     Intermedia.add_term(part=part,project=project,term="need",value=need)
@@ -189,3 +191,8 @@ def redistribute(config:dict,outdir:str,project:str,part:str="redistribute"):
 
     return cmd,cmd_part
 
+
+def self_func(config:dict,outdir:str,project:str,part:str="redistribute"):
+    cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
+
+    return cmd,cmd_part

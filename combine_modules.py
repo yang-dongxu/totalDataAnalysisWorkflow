@@ -13,6 +13,7 @@ METHOD={
     "featureCounts":featureCounts,
     "format":format,
     "redistribute":redistribute,
+    "other":self_func
 
 } 
      
@@ -34,7 +35,10 @@ def process(config:dict,root_out_dir=""):
         mkdirs(outdir)
         for part in this_config["order"]:
             partname=part.strip().split("/")[0]
-            func=METHOD[partname]
+            if partname in METHOD:
+                func=METHOD[partname]
+            else:
+                func=METHOD["other"]
             func_config=this_config["workflow"][part]
             func(func_config,outdir,project,part)
     if len(root_out_dir)==0:
