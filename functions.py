@@ -101,12 +101,12 @@ def trim(config:dict,outdir:str,project:str,part:str="trim"):
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
 
     ##store values to Intermedia
-    iseq1=os.path.split(variables["iseq1"])[-1]
-    iseq2=os.path.split(variables["iseq2"])[-1]
+    iseq1=os.path.split(variables["iseq1"])[-1][:-6]#.fq.gz
+    iseq2=os.path.split(variables["iseq2"])[-1][:-6]#.fq.gz
     suffix_oseq1="_val_1.fq.gz"
     suffix_oseq2="_val_2.fq.gz"
     outdir=variables["outdir"]
-    if iseq1[:-6][-1]=="1":
+    if iseq1[-1]=="1":
         oseq1=os.path.join(outdir,iseq1+suffix_oseq1)
         oseq2=os.path.join(outdir,iseq2+suffix_oseq2)
     else:
