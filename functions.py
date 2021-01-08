@@ -59,7 +59,7 @@ def regular_pipeline(config,part,project,outdir):
     
     if "variables" in config:
         for cmd in get_variables_command(config["variables"],project):
-            exec(cmd)
+            exec(cmd.format_map(locals()))
     
     ##add self-defined names to intermedia
     if "outparams" in config:
@@ -67,7 +67,10 @@ def regular_pipeline(config,part,project,outdir):
             exec(cmd)
         for term,value in config["outparams"].items():
             Intermedia.add_term(part=part,project=project,term=term,value=value)
-
+    
+    if "functions" in config:
+        for func in config["functions"]:
+            exec(func.format_map(locals()))
     ##set outdir
     mkdirs(outdir)
 
