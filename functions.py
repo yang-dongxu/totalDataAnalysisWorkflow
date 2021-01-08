@@ -64,9 +64,9 @@ def regular_pipeline(config,part,project,outdir):
     ##add self-defined names to intermedia
     if "outparams" in config:
         for cmd in get_variables_command(config["outparams"],project):
-            exec(cmd)
+            exec(cmd.format_map(locals()))
         for term,value in config["outparams"].items():
-            Intermedia.add_term(part=part,project=project,term=term,value=value)
+            Intermedia.add_term(part=part,project=project,term=term,value=locals()[term])
     
     if "functions" in config:
         for func in config["functions"]:
@@ -154,13 +154,13 @@ def featureCounts(config:dict,outdir:str,project:str,part:str="featureCounts"):
     outprefix=config["params"]["-o"].format_map(variables)
     ofeatures=outprefix
     osummary=outprefix+".summary"
-    obam=ibam+".featureCounts.bam"
     outdir=variables["outdir"]
+    obam=os.path.join(outdir,os.path.split(ibam)[-1]+".featureCounts.bam")
 
     Intermedia.add_term(part=part,project=project,term="ibam",value=ibam)
     Intermedia.add_term(part=part,project=project,term="ofeatures",value=ofeatures)
     Intermedia.add_term(part=part,project=project,term="osummary",value=osummary)
-    Intermedia.add_term(part=part,project=project,term="obam",value=obam)
+    #Intermedia.add_term(part=part,project=project,term="obam",value=obam) ##defined in config
 
     return cmd,cmd_part
 

@@ -117,6 +117,9 @@
                     "-o":"{outputpath}/{project}_featurecounts",
                     " ":"{ibam}"
                 },
+                "outparams":{
+                    "obam":"{outputpath}/{project}/{project}_Aligned.sortedByCoord.out.bam.featureCounts.bam"
+                }
 
             },
             "format":
@@ -132,7 +135,8 @@
                 {
                     "-@":"10",
                     " ":"-x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x XN -x XS -x XS",
-                    "| grep -e": "XT:Z",
+                    "  ":"{ibam}",
+                    "| grep -e": "\"XT:Z\"",
                     ">":"{outdir}/{project}/{project}_featurecounts.sam.txt"
                 }
 
@@ -141,7 +145,7 @@
             {
                 "need":true,
                 "father":{"isam":["format","osam"]},
-                "path":"redistribute",
+                "path":"redistribute_multiple_aligned_reads.r",
                 "check_paths":[],
                 "cmd_part":"1",
                 "outdir":"distribution",
