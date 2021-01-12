@@ -1,0 +1,4 @@
+rnaseq: rnaseq.yaml
+chipseq: chipseq.yaml
+blank: blank.yaml
+default: blank.yaml

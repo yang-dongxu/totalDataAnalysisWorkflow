@@ -202,6 +202,27 @@ def redistribute(config:dict,outdir:str,project:str,part:str="redistribute"):
     return cmd,cmd_part
 
 
+def byhand(config:dict,seqs:str,part:str="byhand"):
+    seqinfo_file=os.path.abspath(seqs)
+    logging.info(f"parse input file info file {seqinfo_file}")
+
+    names=config["header"][1:]
+    sep=config["header"][0]
+    if sep=="":
+        sep=None
+    f=open(seqinfo_file,'r')
+    part=part
+    for line in f:
+        lineSplit=line.split(sep)
+        project=lineSplit[0]
+        for i in range(0,len(names)):
+            term=names[i]
+            value=lineSplit[i].strip()
+            Intermedia.add_term(part,project,term,value)
+    f.close()
+    logging.info(Intermedia.get_str())
+    return Intermedia
+
 def self_func(config:dict,outdir:str,project:str,part:str="redistribute"):
     cmd,cmd_part,variables=regular_pipeline(config=config,part=part,project=project,outdir=outdir)
 

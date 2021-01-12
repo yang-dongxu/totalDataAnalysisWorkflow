@@ -58,6 +58,8 @@ class Intermedia:
         for project in cls.__data[part]:
             yield part,project,cls.get_term(part,project,"config_id")
 
+
+
     @classmethod
     def iter(cls):
         raw='raw'
@@ -137,5 +139,8 @@ class Intermedia:
             return cls.__get_cmd_out_project_first(config,root_out_dir=root_out_dir)
         
 
-
-   
+    @classmethod
+    def get_attributes_batch(cls,part,attributes):
+       projects=list(cls.__data[part].keys())
+       for project in projects:
+           yield cls.get_term(part=part,project=project,term=attributes)

@@ -8,13 +8,33 @@ import json5
 import logging
 import json
 import yaml
+import configparser
+
+## start to read tdas.ini
+SCRIPT_PATH=os.path.join(os.path.split(__file__)[0])
+
+def parse_config_name(cp:configparser.ConfigParser,name="default"):
+    names=os.path.join(SCRIPT_PATH,cp.get("global",'config_name_list'))
+    f=open(names)
+    names_list=yaml.safe_load(f)
+    f.close()
+    if  name in names_list:
+        return os.path.join(SCRIPT_PATH,cp.get("global",'config_dir'),names_list[name])
+    else:
+        logging.error(f"your config name {name} not in lists {names}, please add them and cp config file to {SCRIPT_PATH}/{cp.options('config_dir')} \n" )
+        sys.exit()
+
+ini=os.path.join(SCRIPT_PATH,"tdas.ini")
+CP=configparser.ConfigParser()
+CP.read(ini)
 
 VERSION="0.0.1"
-LIBRARY='.'
-SUB_TITLE='sub command'
+DEFAULT_CONFIG=parse_config_name(CP)
+
 script_name=os.path.abspath(__file__)
-SCRIPT_PATH=os.path.join(os.path.split(script_name)[0])
-DEFAULT_CONFIG=os.path.join(SCRIPT_PATH,LIBRARY,"tdas_config.yaml")
+#LIBRARY='.'
+#DEFAULT_CONFIG=os.path.join(SCRIPT_PATH,LIBRARY,"tdas_config.yaml")
+
 
 import parseinput
 from combine_modules import *
@@ -22,7 +42,7 @@ from Intermedia import Intermedia
 
 logging.basicConfig(level=logging.WARNING)
 
-def parse_argument(title=SUB_TITLE,):
+def parse_argument(title="sub command",):
     parser=argparse.ArgumentParser()
     sub_parser=parser.add_subparsers(title=title)
     add_generate_config(sub_parser=sub_parser)
@@ -37,7 +57,8 @@ def get_usage():
 
 
 def add_generate_config(sub_parser:argparse.ArgumentParser):
-    new_parser=sub_parser.add_parser("generate_config")
+    new_parser=sub_parser.add_parser("generate")
+    new_parser.add_argument('-n','--name',dest='config_name',type=str,action="store",help="name of config you want to generate",default="default")
     new_parser.add_argument('-o','--outdir',dest="outdir",type=str,action="store",default=os.getcwd())
     new_parser.set_defaults(func=generate_config)
     return True
@@ -60,16 +81,19 @@ def add_run(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
 
 
 
-def generate_config(args,config_path=DEFAULT_CONFIG):
-    out_name=os.path.join(os.getcwd(),args.outdir)
+def generate_config(args):
+    config_path=parse_config_name(CP,args.config_name)
+    out_name=os.path.abspath(args.outdir)
     cmd="cp {default} {target}".format(default=config_path,target=out_name)
     print(cmd)
     os.system(cmd)
     return True
 
 def parse_config(configname:str)->dict:
-
-    name=os.path.abspath(configname)
+    if not os.path.exists(configname):
+        name=parse_config_name(CP,configname)
+    else:
+        name=os.path.abspath(configname)
     f=open(name,encoding='utf8',errors="ignore")
     logging.info(f"Start to get config file : {name}")
     if name.split(".")[-1]=="json" or name.split(".")[-1]=="json5":
