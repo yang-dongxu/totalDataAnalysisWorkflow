@@ -112,7 +112,7 @@ DEFAULT:
     
     sort_and_markdup: 
       need: true
-      path: " "
+      path: "sambamba"
       outdir: cleanBam
       father:
         ibam:
@@ -125,12 +125,11 @@ DEFAULT:
         cleanbam: "{outdir}/{project}_clean.bam"
       
       params:
-        blank: 
-          - "samtools sort -n -@ 12 {ibam} -o {sort_bam} \n"
-          - "samtools fixmate -m -r -@ 12 {sort_bam} -o {fixmate} \n "
-          - "samtools sort -@ 12 {fixmate} -o {fixsort} \n"
-          - "samtools markdup -r -@ 14 {fixsort} -o {cleanbam} \n"
-          - "rm -f {sort_bam} {fixmate} {fixsort}"
+        -r: " "
+        -t: 10
+        blank:
+          - "{ibam}"
+          - "{cleanbam}"        
       
       outparams:
         obam: "{cleanbam}"
