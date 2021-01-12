@@ -7,13 +7,14 @@ import argparse
 import json5
 import logging
 import json
+import yaml
 
 VERSION="0.0.1"
 LIBRARY='.'
 SUB_TITLE='sub command'
 script_name=os.path.abspath(__file__)
 SCRIPT_PATH=os.path.join(os.path.split(script_name)[0])
-DEFAULT_CONFIG=os.path.join(SCRIPT_PATH,LIBRARY,"tdas_config.json5")
+DEFAULT_CONFIG=os.path.join(SCRIPT_PATH,LIBRARY,"tdas_config.yaml")
 
 import parseinput
 from combine_modules import *
@@ -71,7 +72,10 @@ def parse_config(configname:str)->dict:
     name=os.path.abspath(configname)
     f=open(name,encoding='utf8',errors="ignore")
     logging.info(f"Start to get config file : {name}")
-    config=json5.load(f)
+    if name.split(".")[-1]=="json" or name.split(".")[-1]=="json5":
+        config=json5.load(f)
+    else:
+        config=yaml.safe_load(f)
     logging.info(f"Get config file : {name}")
     f.close()
     return config
