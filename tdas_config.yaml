@@ -168,4 +168,4 @@ DEFAULT:
       path: trim_galore
       variables: {}
 
-  workflow_batch:{}
+  workflow_batch: {}

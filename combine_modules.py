@@ -18,9 +18,12 @@ METHOD={
 } 
      
 def out_bash_cmd(cmds):
+    for name in cmds:
+        if os.path.exists(name):
+                os.remove(name)
     for name,cmd in cmds.items():
         mkdirs(os.path.split(name)[0])
-        with open(name,'w') as f:
+        with open(name,'a+') as f:
             f.write("\n".join(cmd))
     return True
 

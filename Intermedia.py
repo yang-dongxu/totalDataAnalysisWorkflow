@@ -99,8 +99,10 @@ class Intermedia:
             name=os.path.join(outdir,config[config_id]["cmd_name"])
             orders=config[config_id]["order"]
             cmd_orders = config[config_id]["cmd_fusion_order"]
-            for project in commands[config_id]:
-                for cmd_part in cmd_orders:
+            #for project in commands[config_id]:
+                #for cmd_part in cmd_orders:
+            for cmd_part in cmd_orders:
+                for project in commands[config_id]:
                     for part in  orders:
                         if cmd_part not in commands[config_id][project]:
                             continue

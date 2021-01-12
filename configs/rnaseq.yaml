@@ -34,12 +34,12 @@ DEFAULT:
   cmd_name: trs.cmd
   log_name: trs.log
   order:
-  - helloworld
-  - trim
-  - STAR
-  - featureCounts
-  - format
-  - redistribute
+    - helloworld
+    - trim
+    - STAR
+    - featureCounts
+    - format
+    - redistribute
   order_batch: []
   outdir: trsout
   workflow:

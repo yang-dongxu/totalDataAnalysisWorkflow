@@ -1,0 +1,239 @@
+seq_info_format:
+- ','
+- project
+- seq1
+- seq2
+- config_id
+DEFAULT:
+  cmd_fusion_order: ['1', 2]
+  cmd_name: trs.cmd
+  log_name: trs.log
+  outdir : chipseqout
+  order:
+    - fastqc
+    - trim
+    - bowtie2
+    - to_bam
+    - sort_and_markdup
+    - peakcalling
+    - toBwfrompeakcalling
+    - toBwfrombam
+    - ceas
+  
+  workflow:
+    fastqc:
+      need: true
+      outdir: fastqc
+      path: fastqc
+      father:
+        iseq1:
+          - raw
+          - seq1
+        iseq2:
+          - raw
+          - seq2
+      params:
+        -t: 10
+        -o: "{outdir}"
+        blank: 
+          - "{iseq1}"
+          - "{iseq2}"
+      outparams:
+        outdir: "{outdir}"
+   
+    trim:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
+      need: true
+      outdir: trimed
+      outparams:
+        example: '{project}/hello'
+      params:
+        ' ': '{iseq1}  {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --paired: ''
+        --quality: '20'
+        -o: '{outdir}'
+      path: trim_galore
+      variables: {}
+
+    bowtie2:
+      need: true
+      outdir: Sam
+      path: bowtie2
+      father: 
+        iseq1:
+          - trim
+          - oseq1
+        iseq2:
+          - trim
+          - oseq2
+      variables:
+        osam: "{outdir}/{project}.sam"
+      params:
+        -q: " "
+        -x: "/mnt/Storate/data/Bowtie/hg38"
+        --no-discordant: " "
+        --thread: 10
+        -q: " "
+        "-1": "{iseq1}"
+        "-2": "{iseq2}" 
+        -S: "{osam}"
+      outparams:
+        osam: "{osam}"
+      
+    to_bam:
+      need: true
+      path: "samtools view"
+      outdir: Bam
+      father: 
+        isam:
+          - bowtie2
+          - osam
+      variables:
+        obam: "{outdir}/{project}.bam"
+      params:
+        --threads: 12
+        -F: 12 #filter out reads un-paired and can't mapping to genome
+        -o: "{obam}"
+        " ": "{isam}"
+      
+      outparams:
+        obam: "{obam}"
+    
+    sort_and_markdup: 
+      need: true
+      path: " "
+      outdir: cleanBam
+      father:
+        ibam:
+          - to_bam
+          - obam
+      variables:
+        sort_bam: "{outdir}/{project}.sort"
+        fixmate: "{outdir}/{project}.fix"
+        fixsort: "{outdir}/{project}.fix.sort"
+        cleanbam: "{outdir}/{project}_clean.bam"
+      
+      params:
+        blank: 
+          - "samtools sort -n -@ 12 {ibam} -o {sort_bam} \n"
+          - "samtools fixmate -m -r -@ 12 {sort_bam} -o {fixmate} \n "
+          - "samtools sort -@ 12 {fixmate} -o {fixsort} \n"
+          - "samtools markdup -r -@ 14 {fixsort} -o {cleanbam} \n"
+          - "rm -f {sort_bam} {fixmate} {fixsort}"
+      
+      outparams:
+        obam: "{cleanbam}"
+      
+    peakcalling:
+      need: true
+      path: "macs2 callpeak"
+      outdir: peakcalling
+      father:
+        ibam:
+          - sort_and_markdup
+          - obam
+      cmd_part: 2
+      params:
+        -f: BAMPE
+        --SPRM: " "
+        -g: hs
+        -B: " "
+        -q: 0.05
+        --keep-dup: 1
+        --nomodel: " "
+        --extsize: 147
+        -n: "{project}"
+        --outdir: "{outdir}/{project}"
+        -t: "{ibam}"
+    
+      outparams:
+        opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
+        osummits: "{outdir}/{project}/{project}_summits.bed"
+        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+    
+    toBwfrompeakcalling:
+      need: true
+      path: " "
+      outdir: "Bw_peakcalling"
+      cmd_part: 2
+      father:
+        ibdg: 
+          - peakcalling
+          - obdg
+      variables:
+        obw: "{outdir}/{project}.bw"
+        chromSize: "/mnt/Storage2/home/zengshiyang/DB/chromSize/hg38.chrom.sizes"
+      params:
+        blank: 
+          - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp \n"
+          - "bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} \n"
+          - "rm -f  {ibdg}.tmp \n"
+      outparams:
+        obw: "{obw}"
+
+    toBwfrombam:
+      need: true
+      path: " "
+      outdir: "Bw_bam"
+      cmd_part: 2
+      father: 
+        ibam:
+          - sort_and_markdup
+          - obam
+      variables:
+        obw: "{outdir}/{project}.bw"
+      params:
+        blank:
+          - "samtools index -b -@ 10 {ibam} \n"
+          - "bamCoverage --samFlagExclude 12 --normalizeUsingRPKM -b {ibam} -o {obw} -p 10  \n"
+    
+    ceas:
+      need: true 
+      path: ceasBW
+      outdir: "ceas"
+      cmd_part: 2
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+        ibed: 
+          - peakcalling
+          - osummits
+      variables:
+        oname: "{outdir}/{project}/{project}"
+        bisize: 2000
+      params:
+        -g: "/mnt/Storage2/home/zengshiyang/DB/refGene/hg38.sqlite3"
+        -l: "/mnt/Storage2/home/zengshiyang/DB/chromSize/hg38.chrom.sizes"
+        --dumps: " "
+        --bg: " "
+        --bisizes: "{bisize}"
+        -w: "{ibw}"
+        -b: "{ibed}"
+        --name: "{oname}"
+      outparams:
+        ogene: "{oname}_dump_gene.txt"
+        oTSS: "{oname}_dump_TSS.txt"
+        oTTS: "{oname}_dump_TTS.txt"
+        opdf: "{oname}.pdf"
+
+
+
+         
+      
+    
+
+        
+
+
