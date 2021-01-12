@@ -20,8 +20,18 @@ def paste_params(params:dict):
 def paset_modifi_params(params,values:dict):
     params=deepcopy(params)
     params_list=[]
+    blank_list=[]
     for this_key, this_values in params.items():
-        params_list.append("  ".join([str(this_key),str(this_values)]).format_map(values))
+        if this_key=="blank":
+            blank_list=this_values
+        else:
+            if isinstance(this_values,list):
+                __values=" ".join(this_values)
+                logging.warning(f"for params, {this_key} has a list values")
+            else:
+                __values=this_values
+            params_list.append("  ".join([str(this_key),str(__values)]).format_map(values))
+    params_list+=[i.format_map(values) for i in blank_list]
     return " ".join(params_list)
 
 def get_father_params_command(sources:dict,project:str):
@@ -67,7 +77,7 @@ def regular_pipeline(config,part,project,outdir):
         for cmd in get_variables_command(config["outparams"],project):
             exec(cmd.format_map(locals()))
         for term,value in config["outparams"].items():
-            Intermedia.add_term(part=part,project=project,term=term,value=locals()[term])
+            Intermedia.add_term(part=part,project=project,term=term,value=value.format_map(locals()))
     
     if "functions" in config:
         for func in config["functions"]:
@@ -172,10 +182,10 @@ def format(config:dict,outdir:str,project:str,part:str="format"):
     outdir=variables["outdir"]
 
     ibam=variables["ibam"]
-    osam=config["params"][">"].format_map(variables)
+    #osam=config["params"][">"].format_map(variables)
 
     Intermedia.add_term(part=part,project=project,term="ibam",value=ibam)
-    Intermedia.add_term(part=part,project=project,term="osam",value=osam)
+    #Intermedia.add_term(part=part,project=project,term="osam",value=osam)
 
     return cmd,cmd_part
 

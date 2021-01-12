@@ -1,3 +1,28 @@
+### Config file for https://github.com/yang-dongxu/totalDataAnalysisWorkflow
+### This config contain two part: seq_info_format to process the raw data info from -bf params in main function, and config for different work steps
+### Only two type key should to be contained in main envrionment: seq_info_format, and config/-id
+### For each configid, it should contain attributes below:
+### cmd_fusion_order: to define the order to output cmd
+### cmd_name and log_name: output bash script name 
+### order: how to perform function defined in workflow
+### order_batch: how to perform function defined in workflow_batch
+### workflow: define the functions need to perform on each project seperately, {project} is a bulid variable in this part
+### workflow_batch: define the functions need to perform on all projects together, or exclude some projects. 
+
+##### for config under each part of workflow, the key is the part name display in log, and it may contains attributes below:
+####### check_path: optional, assert path is exist, otherwise throw an exception an break out
+####### cmd_part: which part of cmd it generates
+####### father: it defines the attribute this function should get from others, in the format of {name in this function:[source,name in source function]}
+####### need: if turuns false, the cmd of this part will generate as comment
+####### path: how to excute this function
+####### outdir: optional, define the path to save output of this function, but you still define this in params
+####### variables: optional, can define some variables used in functions, params, and outparams
+####### params: exact params transfer to path, can use variables {project}, {outdir}, and others defined in variables part, for position specific ones, you can provide them in list format which will set at last, while named_params can be provided in a dict
+####### outparams: attributes can transfer to other functions is asked.
+
+
+
+
 seq_info_format:
 - ','
 - project
@@ -15,8 +40,7 @@ DEFAULT:
   - featureCounts
   - format
   - redistribute
-  order_multiprojects:
-  - generate_cmd
+  order_batch: []
   outdir: trsout
   workflow:
     STAR:
@@ -81,14 +105,18 @@ DEFAULT:
         - obam
       need: true
       outdir: features
+      variables:
+       osam: "{outdir}/{project}/{project}_featurecounts.sam.txt"  
       params:
-        ' ': -x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x
-          XN -x XS -x XS
-        '  ': '{ibam}'
+        blank: 
+        - "-x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x XN -x XS -x XS"
+        - "{ibam}"
+        - "> {osam}"
+        - ' | grep -e: \"XT:Z\" '
         -@: '10'
-        '>': '{outdir}/{project}/{project}_featurecounts.sam.txt'
-        '| grep -e': '"XT:Z"'
       path: samtools view
+      outparams: 
+       osam: "{osam}"
     helloworld:
       need: true
       params:
