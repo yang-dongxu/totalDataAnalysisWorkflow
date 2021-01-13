@@ -21,16 +21,19 @@ def parse_inputfile(config:dict,seqs:str):
     for line in f:
         lineSplit=line.split(sep)
         project=lineSplit[0]
-        if len(lineSplit)<len(names) or lineSplit[-1]=="":
-            lineSplit=lineSplit+[DEFAULT_CONFIG_ID]
         for i in range(0,len(names)):
             term=names[i]
             value=lineSplit[i].strip()
-            Intermedia.add_term(part,project,term,value)
+            Intermedia.add_term(part,project,term,str(value))
             cmd=f'echo "###### start process pipline ######"'
             cmd_part="1"
             Intermedia.add_term(part,project,term="command",value=cmd)
             Intermedia.add_term(part,project,term="command_part",value=cmd_part)
+        if "seq_order"  not in names:
+            Intermedia.add_term(part,project,term="seq_order",value="1")
+        if "config_id" not in names:
+            Intermedia.add_term(part,project,term="config_id",value=DEFAULT_CONFIG_ID)
+
     
     f.close()
     logging.info(Intermedia.get_str())

@@ -43,7 +43,7 @@ class Intermedia:
     @classmethod
     def get_term(cls,part:str,project:str,term:str):
         try:
-            return deepcopy(cls.__data[part][project][term])
+            return deepcopy(cls.__data[part][project][str(term)])
         except:
             logging.error(f"no data in {part} {project} {term} ")
             return None
@@ -53,25 +53,51 @@ class Intermedia:
         return nested_to_record(cls.__data)
 
     @classmethod
-    def get_next_to_process(cls):
+    def get_next_to_process(cls,config):
         part="raw"
+        seqs=[]
         for project in cls.__data[part]:
-            yield part,project,cls.get_term(part,project,"config_id")
+            seqs.append( (project,cls.get_term(part,project,"config_id"),cls.get_term(part,project,"seq_order")))
+        if "seq_order" not in config:
+            seqs.sort(key=lambda x:int(x[2]))
+        else:
+            orders=[str(i) for i in config["seq_order"]]
+            try:
+                seqs.sort(key=lambda x: orders.index(x[2]))
+            except:
+                for i in seqs:
+                    if i[2] not in orders:
+                        logging.error(f"{i[0]} has a undefined order {i[2]}, check it!\n")
+        for i in seqs:
+            yield i[0], i[1]
 
 
 
     @classmethod
-    def iter(cls):
+    def iter(cls,config):
         raw='raw'
+        seqs=[]
         for part,values in cls.__data.items():
             for project,values2 in values.items():
-                yield deepcopy(part),deepcopy(project),cls.get_term('raw',project,"config_id")
+                seqs.append( (deepcopy(part),deepcopy(project),cls.get_term('raw',project,"config_id"),cls.get_term("raw",project,"seq_order")))
+        if "seq_order" not in config:
+            seqs.sort(key=lambda x:int(x[2]))
+        else:
+            orders=[str(i) for i in config["seq_order"]]
+            try:
+                seqs.sort(key=lambda x: orders.index(x[-1]))
+            except:
+                for i in seqs:
+                    if i[-1] not in orders:
+                        logging.error(f"{i[1]} has a undefined order {i[-1]}, check it!\n")
+        for i in seqs:
+            yield i[0], i[1], i[2]
 
     @classmethod
     def __get_cmd_out_project_first(cls,config,root_out_dir=""):
         #commands={config_id:{project:{cmd_part:[commands]}}}
         commands={}
-        for i in cls.iter():
+        for i in cls.iter(config):
             part,project,config_id=deepcopy(i)
             command=cls.get_term(part=part,project=project,term="command")
             cmd_part=cls.get_term(part=part,project=project,term="command_part")
@@ -146,3 +172,4 @@ class Intermedia:
        projects=list(cls.__data[part].keys())
        for project in projects:
            yield cls.get_term(part=part,project=project,term=attributes)
+        

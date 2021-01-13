@@ -28,8 +28,8 @@ def out_bash_cmd(cmds):
     return True
 
 def process(config:dict,root_out_dir=""):
-    for i in Intermedia.get_next_to_process():
-        raw,project,configid=i
+    for i in Intermedia.get_next_to_process(config):
+        project,configid=i
         this_config=config[configid]
         if len(root_out_dir)==0:
             outdir=os.path.join(os.getcwd(),this_config["outdir"])

@@ -28,7 +28,12 @@ seq_info_format:
 - project
 - seq1
 - seq2
-- config_id
+- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
 DEFAULT:
   cmd_fusion_order: ['1']
   cmd_name: trs.cmd
