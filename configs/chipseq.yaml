@@ -9,12 +9,15 @@ seq_order:
   - 1
   - 2
   - 3
+config_ids: 
+  - DEFAULT
 
 DEFAULT:
   cmd_fusion_order: ['1', 2]
   cmd_name: trs.cmd
   log_name: trs.log
   outdir : chipseqout
+  data_name: data.yaml
   order:
     - fastqc
     - trim
@@ -25,6 +28,13 @@ DEFAULT:
     - toBwfrompeakcalling
     - toBwfrombam
     - ceas
+    - frip_cal
+    - peaks_count
+  
+  order_stat: 
+    - run
+    - stat_basic
+
   
   workflow:
     fastqc:
@@ -233,12 +243,53 @@ DEFAULT:
         oTTS: "{oname}_dump_TTS.txt"
         opdf: "{oname}.pdf"
 
-
-
-         
-      
+    frip_cal:
+      need: true
+      cmd_part: 2
+      path: " "
+      outdir: " "
+      father: 
+        ipeaks:
+          - peakcalling
+          - opeaks
+        ibam:
+          - sort_and_markdup
+          - obam
+      variables:
+        tmp_name: "{outdir}/tmp/{part}"
+      params:
+        blank:
+          - "echo {project} >> {tmp_name} \n"
+          - "bedtools intersect -wa -u -a {ibam} -b {ipeaks}  | wc -l >> {tmp_name}"
+      outparams:
+        otmp: "{tmp_name}"
     
+    peaks_count:
+      need: true
+      cmd_part: 2
+      path: " "
+      outdir: " "
+      father: 
+        ipeaks:
+          - peakcalling
+          - opeaks
+      variables:
+        tmp_name: "{outdir}/tmp/{part}"
+      params:
+        blank:
+          - "echo {project} >> {tmp_name} \n "
+          - "cat {ipeaks}  | wc -l >> {tmp_name}"
+      outparams:
+        otmp: "{tmp_name}"
+    
+  stat: 
+    run:
+      need: true 
 
+    stat_basic:
+      need: true 
+      father: 
         
+    
 
 

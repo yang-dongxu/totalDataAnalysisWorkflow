@@ -9,6 +9,7 @@ import logging
 import json
 import yaml
 import configparser
+import pickle
 
 ## start to read tdas.ini
 SCRIPT_PATH=os.path.join(os.path.split(__file__)[0])
@@ -46,7 +47,8 @@ def parse_argument(title="sub command",):
     parser=argparse.ArgumentParser()
     sub_parser=parser.add_subparsers(title=title)
     add_generate_config(sub_parser=sub_parser)
-    add_run(sub_parser=sub_parser)
+    add_cmd(sub_parser=sub_parser)
+    add_stat(sub_parser=sub_parser)
     parser.set_defaults(func=parser.print_help)
     return parser
 
@@ -64,8 +66,8 @@ def add_generate_config(sub_parser:argparse.ArgumentParser):
     return True
 
 
-def add_run(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
-    new_parser=sub_parser.add_parser("run")
+def add_cmd(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
+    new_parser=sub_parser.add_parser("cmd")
 
     input_opt=new_parser.add_mutually_exclusive_group()
     input_opt.add_argument('-a','--auto',dest="auto",action="store_true",default=True,help="choose this to let this script get seg pair info with input dir auto. default choose\n")
@@ -80,6 +82,44 @@ def add_run(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
     return True
 
 
+def add_stat(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
+    new_parser=sub_parser.add_parser("stat")
+    input_opt=new_parser.add_mutually_exclusive_group()
+    input_opt.add_argument('-a','--auto',dest="auto",action="store_true",default=True,help="choose this to let this script get input intermedia data info from config auto. default choose\n")
+    input_opt.add_argument('-b','--byhand',dest="byhand",action="store_true",default=False,help='choose this to input seg pair info with a file, which is determine by -f\n')
+
+    new_parser.add_argument('-f','--intermedia-info',dest="seqinfo",type=str,action="store",help="input a file with paired seqs, it should be a csv with no head, and contain three columns:project_name,pair1,pair2\n")
+
+    new_parser.add_argument('-c','--config',dest="config",type=str,action="store",default=DEFAULT_CONFIG)
+    new_parser.set_defaults(func=stat)
+    return True
+
+def stat(args):
+    #outdir=args.outdir
+    config=parse_config(args.config)
+    if not args.byhand:
+        flag=False
+        for configid in config["config_ids"]:
+            if configid in config:
+                if "outdir" in config[configid]:
+                    datapath=os.path.join(os.path.abspath(config[configid]["outdir"]),config[configid]["data_name"])
+                    if os.path.exists(datapath):
+                        try:
+                            with  open(datapath) as f:
+                                Intermedia.loads(f)
+                                flag=True
+                                break
+                        except:
+                            logging.error(f"intermedia data {datapath} broken!")
+        if not flag:
+            logging.error("can't find intermedia file auto, please try to point its name")
+    else:
+        with open(os.path.abspath(args.seqinfo)) as f:
+            Intermedia.loads(f.read())
+    stat_process(config)
+    
+    
+    
 
 def generate_config(args):
     config_path=parse_config_name(CP,args.config_name)

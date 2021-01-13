@@ -5,9 +5,9 @@
 ### cmd_fusion_order: to define the order to output cmd
 ### cmd_name and log_name: output bash script name 
 ### order: how to perform function defined in workflow
-### order_batch: how to perform function defined in workflow_batch
+### order_stat: how to perform function defined in workflow_batch
 ### workflow: define the functions need to perform on each project seperately, {project} is a bulid variable in this part
-### workflow_batch: define the functions need to perform on all projects together, or exclude some projects. 
+### workflow_stat: define the functions need to perform on all projects together, or exclude some projects. 
 
 ##### for config under each part of workflow, the key is the part name display in log, and it may contains attributes below:
 ####### check_path: optional, assert path is exist, otherwise throw an exception an break out
@@ -34,6 +34,8 @@ seq_order:
   - 1
   - 2
   - 3
+config_ids: 
+  - DEFAULT
 DEFAULT:
   cmd_fusion_order: ['1']
   cmd_name: trs.cmd
@@ -45,7 +47,7 @@ DEFAULT:
     - featureCounts
     - format
     - redistribute
-  order_batch: []
+  order_stat: []
   outdir: trsout
   workflow:
     STAR:
@@ -173,4 +175,4 @@ DEFAULT:
       path: trim_galore
       variables: {}
 
-  workflow_batch: {}
+  stat: {}

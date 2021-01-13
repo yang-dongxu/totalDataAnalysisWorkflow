@@ -2,6 +2,7 @@ import logging
 import sys
 import os
 from copy import deepcopy
+import yaml
 
 try:
     from pandas.io.json._normalize import nested_to_record 
@@ -172,4 +173,14 @@ class Intermedia:
        projects=list(cls.__data[part].keys())
        for project in projects:
            yield cls.get_term(part=part,project=project,term=attributes)
+
+    @classmethod
+    def dumps(cls):
+        logging.info("dumps out intermedia info")
+        return yaml.safe_dump(cls.__data)
+    
+    @classmethod
+    def loads(cls,data):
+        logging.warn("intermedia loads outer info in!")
+        cls.__data=yaml.safe_load(data)
         

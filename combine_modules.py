@@ -3,6 +3,7 @@ import sys
 import os
 
 from pandas.io.json._normalize import nested_to_record 
+import yaml
 
 from functions import *
 
@@ -27,6 +28,11 @@ def out_bash_cmd(cmds):
             f.write("\n".join(cmd))
     return True
 
+def out_intermedia(name):
+    with open (name,'a+') as f:
+        f.write(Intermedia.dumps())
+    return True    
+
 def process(config:dict,root_out_dir=""):
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
@@ -49,3 +55,11 @@ def process(config:dict,root_out_dir=""):
     else:
         outdir=os.path.abspath(root_out_dir)
     out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir))
+    for i in Intermedia.get_next_to_process(config):
+        project,configid=i
+        name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
+        out_intermedia(name)
+    
+
+def stat_process(config:dict):
+    print("stat modules is under developing")

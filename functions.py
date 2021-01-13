@@ -11,6 +11,7 @@ def mkdirs(path):
     return True
 
 
+
 def paste_params(params:dict):
     params_list=[]
     for key,value in params.items():
@@ -33,6 +34,7 @@ def paset_modifi_params(params,values:dict):
             params_list.append("  ".join([str(this_key),str(__values)]).format_map(values))
     params_list+=[i.format_map(values) for i in blank_list]
     return " ".join(params_list)
+
 
 def get_father_params_command(sources:dict,project:str):
     for varName,param in sources.items():
@@ -72,16 +74,19 @@ def regular_pipeline(config,part,project,outdir):
         for cmd in get_variables_command(config["variables"],project):
             exec(cmd.format_map(locals()))
     
-    ##add self-defined names to intermedia
+
+    
+    if "functions" in config:
+        for func in config["functions"]:
+            exec(func.format_map(locals()))
+
+        ##add self-defined names to intermedia
     if "outparams" in config:
         for cmd in get_variables_command(config["outparams"],project):
             exec(cmd.format_map(locals()))
         for term,value in config["outparams"].items():
             Intermedia.add_term(part=part,project=project,term=term,value=value.format_map(locals()))
-    
-    if "functions" in config:
-        for func in config["functions"]:
-            exec(func.format_map(locals()))
+
     ##set outdir
     mkdirs(outdir)
 
@@ -89,6 +94,10 @@ def regular_pipeline(config,part,project,outdir):
     cmd=f"{software} {paset_modifi_params(params=params,values=locals())} "
     cmd=wrap_cmd(cmd,project,part,config["need"])
     #print(cmd)
+
+    if "functions_last" in config:
+        for func in config["functions_last"]:
+            exec(func.format_map(locals()))
 
     ##check path
     if "check_paths" in config:
