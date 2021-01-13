@@ -97,7 +97,7 @@ DEFAULT:
         osam: "{outdir}/{project}.sam"
       params:
         -q: " "
-        -x: "/mnt/Storate/data/Bowtie/hg38"
+        -x: "/mnt/Storage/data/Bowtie/hg38"
         --no-discordant: " "
         --thread: 10
         -q: " "
@@ -128,7 +128,7 @@ DEFAULT:
     
     sort_and_markdup: 
       need: true
-      path: "sambamba"
+      path: " "
       outdir: cleanBam
       father:
         ibam:
@@ -141,11 +141,11 @@ DEFAULT:
         cleanbam: "{outdir}/{project}_clean.bam"
       
       params:
-        -r: " "
-        -t: 10
         blank:
-          - "{ibam}"
-          - "{cleanbam}"        
+          - "sambamba markdup -r -t 10 {ibam} {sort_bam}\n"
+          - "sambamba sort -t 10 {sort_bam} {cleanbam}"
+          - "rm {sort_bam}"
+    
       
       outparams:
         obam: "{cleanbam}"
@@ -161,7 +161,7 @@ DEFAULT:
       cmd_part: 2
       params:
         -f: BAMPE
-        --SPRM: " "
+        --SPMR: " "
         -g: hs
         -B: " "
         -q: 0.05
@@ -210,7 +210,7 @@ DEFAULT:
         obw: "{outdir}/{project}.bw"
       params:
         blank:
-          - "samtools index -b -@ 10 {ibam} \n"
+          - "samtools index -b -@ 10 {ibam}  {ibam}.bai \n"
           - "bamCoverage --samFlagExclude 12 --normalizeUsingRPKM -b {ibam} -o {obw} -p 10  \n"
     
     ceas:
@@ -228,10 +228,12 @@ DEFAULT:
       variables:
         oname: "{outdir}/{project}/{project}"
         bisize: 2000
+      functions:
+        - "mkdirs('{outdir}/{project}')"
       params:
         -g: "/mnt/Storage2/home/zengshiyang/DB/refGene/hg38.sqlite3"
         -l: "/mnt/Storage2/home/zengshiyang/DB/chromSize/hg38.chrom.sizes"
-        --dumps: " "
+        --dump: " "
         --bg: " "
         --bisizes: "{bisize}"
         -w: "{ibw}"
@@ -247,7 +249,7 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: " "
+      outdir: "stat"
       father: 
         ipeaks:
           - peakcalling
@@ -256,10 +258,10 @@ DEFAULT:
           - sort_and_markdup
           - obam
       variables:
-        tmp_name: "{outdir}/tmp/{part}"
+        tmp_name: "{outdir}/{part}"
       params:
         blank:
-          - "echo {project} >> {tmp_name} \n"
+          - "echo -ne \"{project}\t\" >> {tmp_name} \n"
           - "bedtools intersect -wa -u -a {ibam} -b {ipeaks}  | wc -l >> {tmp_name}"
       outparams:
         otmp: "{tmp_name}"
@@ -268,16 +270,16 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: " "
+      outdir: "stat"
       father: 
         ipeaks:
           - peakcalling
           - opeaks
       variables:
-        tmp_name: "{outdir}/tmp/{part}"
+        tmp_name: "{outdir}/{part}"
       params:
         blank:
-          - "echo {project} >> {tmp_name} \n "
+          - "echo -ne \"{project}\t\" >> {tmp_name} \n"
           - "cat {ipeaks}  | wc -l >> {tmp_name}"
       outparams:
         otmp: "{tmp_name}"
@@ -288,7 +290,7 @@ DEFAULT:
 
     stat_basic:
       need: true 
-      father: 
+      father:  {}
         
     
 

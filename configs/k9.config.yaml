@@ -1,0 +1,113 @@
+DEFAULT:
+  cmd_fusion_order:
+  - '1'
+  cmd_name: trs.cmd
+  log_name: trs.log
+  order:
+  - sort_bam
+  - featureCounts
+  - format
+  - redistribute
+  - rm_samtmp
+  order_multiprojects:
+  - generate_cmd
+  outdir: k9_repeats
+  workflow:
+    featureCounts:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        ibam:
+        - sort_bam
+        - obam
+      functions:
+      - mkdirs("{outputpath}")
+      need: true
+      outdir: features
+      outparams:
+        obam: '{outputpath}/{project}.sortedBycoordinate.bam.featureCounts.bam'
+      params:
+        ' ': '{ibam}'
+        --fracOverlap: '0.1'
+        --fraction: ' '
+        -B: ' '
+        -M: ' '
+        -O: ' '
+        -R: BAM
+        -T: '10'
+        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.gtf
+        -g: gene_id
+        -o: '{outputpath}/{project}_featurecounts'
+        -p: ' '
+      path: featureCounts
+      variables:
+        outputpath: '{outdir}/{project}'
+    format:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        ibam:
+        - featureCounts
+        - obam
+      need: true
+      outdir: features
+      params:
+        ' ': '-x AS -x XS -x XN -x XM -x XO -x XG -x NM -x MD -x YS -x YT -x MQ -x
+          MC -x ms -x XS -x XN '
+        '  ': '{ibam}'
+        -@: '10'
+        '>': '{outdir}/{project}/{project}_featurecounts.sam.txt'
+        '| grep -e': '"XT:Z"'
+      path: samtools view
+    redistribute:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        isam:
+        - format
+        - osam
+      functions:
+      - mkdirs('{outputpath}')
+      need: true
+      outdir: distribution
+      params:
+        -f: '{isam}'
+        -m: 1
+        -n: '{outputpath}/{project}_distribution.txt'
+        -p: '12'
+        -r: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.saf
+        -s: '50'
+      path: redistribute_multiple_aligned_reads.r
+      variables:
+        outputpath: '{outdir}/{project}'
+    rm_samtmp:
+      father:
+        isam:
+        - format
+        - osam
+      need: true
+      params:
+        -f: '{isam}'
+      path: rm
+    sort_bam:
+      cmd_part: '1'
+      father:
+        ibam:
+        - raw
+        - bam
+      functions:
+      - mkdirs("{outdir}")
+      need: false
+      outdir: bams
+      outparams:
+        obam: '{outdir}/{project}.sortedBycoordinate.bam'
+      params:
+        ' ': '{ibam}'
+        -@: '10'
+        -o: '{outdir}/{project}.sortedBycoordinate.bam'
+      path: samtools sort
+seq_info_format:
+- ''
+- project
+- bam
+- config_id
