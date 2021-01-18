@@ -1,4 +1,8 @@
 rnaseq: rnaseq.yaml
 chipseq: chipseq.yaml
 blank: blank.yaml
+wgbs: wgbs_pe.yaml
+wgbs_pe: wgbs_pe.yaml
+wgbs_se: wgbs_se.yaml
+
 default: blank.yaml

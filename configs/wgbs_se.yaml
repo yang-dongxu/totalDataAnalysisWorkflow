@@ -1,0 +1,181 @@
+
+seq_info_format:
+  - ''
+  - project
+  - seq1
+  - seq2
+#- config_id
+config_ids:
+  - DEFAULT
+seq_order:
+  - 1
+  - 2
+DEFAULT:
+  cmd_fusion_order:
+    - '1'
+  cmd_name: trs.cmd
+  log_name: trs.log
+  data_name: data.yaml
+  order:
+    - fastqc
+    - mv
+    - trim_se
+    - bsmap
+    - sortbam
+    - mcall
+    - methratio
+  order_multiprojects:
+    - generate_cmd
+  outdir: trsout
+  workflow:
+
+    fastqc:
+      father:
+        iseq1:
+          - raw
+          - seq1
+          - seq2
+      need: true
+      outdir: fastqc
+      params:
+        ' ': '{iseq1}'
+        -o: '{outdir}'
+        -t: '10'
+      path: fastqc
+
+    mv:
+      need:  true
+      cmd_part: "1"
+      father:
+        iseq1:
+          - raw
+          - seq1
+        iseq2:
+          - raw
+          - seq2
+
+      path: "  "
+      outdir: "trimed"
+      variables:
+        oseq1: "{outdir}/{project}_1.fq.gz"
+        oseq2: "{outdir}/{project}_2.fq.gz"
+      params:
+        blank:
+          - "cp {iseq1} {oseq1}"
+          - "cp {iseq2} {oseq2}"
+      outparams:
+        oseq1_prefix: "{outdir}/{project}_1"
+        oseq1_prefix: "{outdir}/{project}_2"
+
+
+    trim_pe:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1_pre:
+          - "mv"
+          - "oseq1_prefix"
+        iseq2_pre:
+          - "mv"
+          - "oseq2_prefix"
+      need: true
+      outdir: "trimed"
+      variables:
+        oseq1: "{iseq1_pre}_val_1.fq.gz"
+        iseq1: "{iseq1_pre}.fq.gz"
+        oseq1: "{iseq2_pre}_val_2.fq.gz"
+        iseq1: "{iseq2_pre}.fq.gz"
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+      params:
+        '-p': '{iseq1} {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --quality: '20'
+        -o: '{outdir}'
+      path: trim_galore
+
+    bsmap:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+          - trim_se
+          - oseq1
+        iseq2:
+          - trim_se
+          - oseq2
+      need: true
+      outdir: bsmap
+      outparams:
+        obam: "{outdir}/{project}.bam"
+      params:
+        -R: '  '
+        -a: '{iseq1}'
+        -b: '{iseq2}'
+        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
+        -n: '1'
+        -o: '{outdir}/{project}.bam'
+        -p: '12'
+        -r: '2'
+      path: bsmap
+      variables: {}
+
+    sortbam: 
+      need: true
+      path: "samtools sort" 
+      outdir: cleanBam
+      cmd_part: "1"
+      father: 
+        ibam:
+          - bsmap
+          - obam
+      variables:
+        outname: "{outdir}/{project}.clean.bam"
+      params:
+        -@: 10
+        -o: "{outname}"
+        blank:
+          - "{ibam}"
+      outparams:
+        obam: "{outdir}/{project}.clean.bam"
+    
+    mcall:
+      need: false
+      path: mcall
+      outdir: mcall
+      father:
+        ibam:
+          - sortbam
+          - obam
+      variables:
+        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa"
+        out: "{outdir}/{project}"
+      params:
+        -m: "{ibam}"
+        -p: 12
+        -r: "{reffa}"
+        --outputDir: "{out}"
+    
+    methratio:
+      need: true
+      path: methratio.py
+      variables:
+        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa"
+        oname: "{outdir}/{project}/{project}.txt"
+      functions: 
+        - "mkdirs(os.path.split(\"{oname}\")[0])"
+      father:
+        ibam:
+          - sortbam
+          - obam
+      params:
+        -o: "{oname}"
+        -d: "{reffa}"
+        -z: "{ibam}"
+      outparams:
+        oname: "{oname}"
+
+
