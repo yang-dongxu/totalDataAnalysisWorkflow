@@ -20,6 +20,8 @@ def parse_inputfile(config:dict,seqs:str):
 
     for line in f:
         lineSplit=line.split(sep)
+        if not len(lineSplit):
+            continue
         project=lineSplit[0]
         for i in range(0,len(names)):
             term=names[i]
