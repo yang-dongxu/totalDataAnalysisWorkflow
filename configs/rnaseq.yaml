@@ -40,6 +40,7 @@ DEFAULT:
   cmd_fusion_order: ['1']
   cmd_name: trs.cmd
   log_name: trs.log
+  data_name: data.yaml
   order:
     - helloworld
     - trim

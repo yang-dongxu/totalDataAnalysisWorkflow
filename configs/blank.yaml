@@ -1,0 +1,36 @@
+seq_info_format:
+- ','
+- project
+- seq1
+- seq2
+- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids: 
+  - DEFAULT
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2]
+  cmd_name: trs.cmd
+  log_name: trs.log
+  outdir : chipseqout
+  data_name: data.yaml
+
+  order:
+    - helloworld
+
+
+  workflow:
+        helloworld:
+          need: true
+          variables: {}
+          functions: {}
+          funcitions_last: {}
+          father: {}
+          outparams: {}
+          params:
+            ' ': '" hello world"'
+          path: echo
