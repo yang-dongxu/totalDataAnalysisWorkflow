@@ -149,19 +149,21 @@ DEFAULT:
       outparams:
         oname: "{oname}"
       
-
-  stat: 
+  stat:
     helloWorld:
       need: true 
       path: " "
-      iparam_list:
+      iparams_list:
         projects:
           - raw
           - project
           - ","
       
-      iparam_single:
+      iparams_single:
         iintensity:
           - set_featureCounts_out
           - oname 
           - "Female_14w_RNAseq_N_rep1"
+      params:
+        blank: 
+          - "echo {projects}"
