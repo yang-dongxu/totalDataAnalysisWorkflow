@@ -34,6 +34,7 @@ seq_order:
   - 1
   - 2
   - 3
+  - last
 config_ids: 
   - DEFAULT
 DEFAULT:
@@ -87,10 +88,17 @@ DEFAULT:
         - oseq2
       need: true
       outdir: star
-      outparams: {}
+      variables:
+        outprefix:  "{outdir}/{project}/{project}_"
+      outparams:
+        obam_sorted: "{outprefix}Aligned.sortedByCoord.out.bam"
+        ologfinalout: "{outprefix}Log.final.out"
+        ologout: "{outprefix}Log.out"
+        ologprogressout: "{outprefix}Log.progress.out"
+        osj: "{outprefix}SJ.out.tab"
       params:
         --genomeDir: /mnt/Storage2/home/zengshiyang/DB/STAR/hg38
-        --outFileNamePrefix: '{outdir}/{project}/{project}_'
+        --outFileNamePrefix: '{outprefix}'
         --outFilterMultimapNmax: '500'
         --outSAMattributes: NH HI NM MD XS AS
         --outSAMtype: BAM SortedByCoordinate
@@ -149,7 +157,8 @@ DEFAULT:
       outparams:
         oname: "{oname}"
       
-  stat:
+
+  stat: 
     helloWorld:
       need: true 
       path: " "

@@ -7,6 +7,8 @@ import yaml
 
 from functions import *
 from stats_functions import BlockStat
+from working_functions import BlockWork
+from spfunctions import SPfucntions
 
 METHOD={
     "trim":trim,
@@ -31,9 +33,15 @@ def out_bash_cmd(cmds):
 def out_intermedia(name):
     with open (name,'w') as f:
         f.write(Intermedia.dumps())
-    return True    
+    return True  
 
-def process(config:dict,root_out_dir=""):
+def out_intermedia_new(config):
+    for i in Intermedia.get_next_to_process(config):
+        project,configid=i
+        name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
+        out_intermedia(name)  
+
+def process_old(config:dict,root_out_dir=""):
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
         this_config=config[configid]
@@ -59,12 +67,34 @@ def process(config:dict,root_out_dir=""):
         project,configid=i
         name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
         out_intermedia(name)
-    
-def out_intermedia_new(config):
+
+def process(config:dict,root_out_dir=""):
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
-        name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
-        out_intermedia(name)
+        this_config=config[configid]
+        if len(root_out_dir)==0:
+            outdir=os.path.join(os.getcwd(),this_config["outdir"])
+        else:
+            outdir=os.path.abspath(root_out_dir)
+        mkdirs(outdir)
+        for part in this_config["order"]:
+            partname=part.strip().split("/")[0]
+            if partname in SPfucntions:
+                func=SPfucntions[partname]
+            else:
+                func=SPfucntions["other"]
+            func_config=this_config["workflow"][part]
+            #func(func_config,outdir,project,part)
+            BlockWork(name=part,outdir=outdir,project=project,params=func_config,config_id=configid,func=func)
+    if len(root_out_dir)==0:
+        outdir=""
+    else:
+        outdir=os.path.abspath(root_out_dir)
+    out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir))
+    out_intermedia_new(config)
+
+
+
 
 def stat_process(config:dict,root_out_dir=""):
     for config_id in config.get("config_ids",["DEFAULT"]):
@@ -79,7 +109,7 @@ def stat_process(config:dict,root_out_dir=""):
         stat_order=this_config["order_stat"]
         
         for part in stat_order:
-            BlockStat(part,outdir,this_config["stat"][part],config_id=config_id)
+            BlockStat(name=part,outdir=outdir,project="STAT",params=this_config["stat"][part],config_id=config_id)
     out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir))
     if len(root_out_dir)==0:
         outdir=""

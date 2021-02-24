@@ -18,8 +18,6 @@ class BlockStat(Block):
         self.iparams_single=params.get("iparams_single",{})
  
         self.cmd_part=params.get("cmd_part","STAT")
-        self.project=project
-
         self.process()
 
 

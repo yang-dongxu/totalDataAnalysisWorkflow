@@ -20,7 +20,7 @@ class Block:
         self.name=name
         self.need = params.get("need",False)
         self.path = params.get("path"," ")
-        self.iparmas=params.get("iparams",{})
+        self.iparams=params.get("iparams",{})
         self.outparams=params.get("outparams",{})
         self.outdir=os.path.join(outdir,params.get("outdir",name))
         self.variables=params.get("variables",{})
@@ -36,14 +36,15 @@ class Block:
         self.sp_func_kwargs=kwargs
 
         self.values={}
-        self.outparams={}
         self.cmd=""
+        self.values["outdir"]=self.outdir
+        self.values["project"]=self.project
 
         Intermedia.add_term(self.name,self.project,"config_id",config_id)
         Intermedia.add_term(self.name,self.project,"need",self.need)
 
     def process(self):
-        self.values["outdir"]=self.outdir
+        
         mkdirs(self.outdir)
 
         self.process_iparams()
@@ -80,7 +81,6 @@ class Block:
         for item,value in self.outparams.items():
             new_value=str.format_map(value,self.values)
             Intermedia.add_term(self.name,self.project,item,new_value)
-            self.outparams[item]=new_value
         return 0
     def process_functions_last(self):
         for func in self.functions_last:
