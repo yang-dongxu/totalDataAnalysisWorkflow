@@ -6,7 +6,7 @@ from pandas.io.json._normalize import nested_to_record
 import yaml
 
 from functions import *
-
+from stats_functions import BlockStat
 
 METHOD={
     "trim":trim,
@@ -29,7 +29,7 @@ def out_bash_cmd(cmds):
     return True
 
 def out_intermedia(name):
-    with open (name,'a+') as f:
+    with open (name,'w') as f:
         f.write(Intermedia.dumps())
     return True    
 
@@ -60,6 +60,32 @@ def process(config:dict,root_out_dir=""):
         name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
         out_intermedia(name)
     
+def out_intermedia_new(config):
+    for i in Intermedia.get_next_to_process(config):
+        project,configid=i
+        name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
+        out_intermedia(name)
 
-def stat_process(config:dict):
+def stat_process(config:dict,root_out_dir=""):
+    for config_id in config.get("config_ids",["DEFAULT"]):
+        this_config=config[config_id]
+
+        if len(root_out_dir)==0:
+            outdir=os.path.join(os.getcwd(),this_config["outdir"])
+        else:
+            outdir=os.path.abspath(root_out_dir)
+        mkdirs(outdir)
+
+        stat_order=this_config["order_stat"]
+        
+        for part in stat_order:
+            BlockStat(part,outdir,this_config["stat"][part],config_id=config_id)
+    out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir))
+    if len(root_out_dir)==0:
+        outdir=""
+    else:
+        outdir=os.path.abspath(root_out_dir)
+    out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir))
+    out_intermedia_new(config)
+
     print("stat modules is under developing")

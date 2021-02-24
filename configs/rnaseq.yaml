@@ -37,7 +37,7 @@ seq_order:
 config_ids: 
   - DEFAULT
 DEFAULT:
-  cmd_fusion_order: ['1']
+  cmd_fusion_order: ['1',"STAT"]
   cmd_name: cmd
   log_name: log
   data_name: data.yaml
@@ -46,7 +46,8 @@ DEFAULT:
     - STAR
     - featureCounts
     - set_featureCounts_out
-  order_stat: []
+  order_stat: 
+    - helloWorld
   outdir: rnaseq
   workflow:
     trim:
@@ -88,7 +89,7 @@ DEFAULT:
       outdir: star
       outparams: {}
       params:
-        --genomeDir: /mnt/Storage2/home/DB/STAR/hg38
+        --genomeDir: /mnt/Storage2/home/zengshiyang/DB/STAR/hg38
         --outFileNamePrefix: '{outdir}/{project}/{project}_'
         --outFilterMultimapNmax: '500'
         --outSAMattributes: NH HI NM MD XS AS
@@ -149,4 +150,18 @@ DEFAULT:
         oname: "{oname}"
       
 
-  stat: {}
+  stat: 
+    helloWorld:
+      need: true 
+      path: " "
+      iparam_list:
+        projects:
+          - raw
+          - project
+          - ","
+      
+      iparam_single:
+        iintensity:
+          - set_featureCounts_out
+          - oname 
+          - "Female_14w_RNAseq_N_rep1"

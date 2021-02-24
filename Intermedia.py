@@ -43,11 +43,21 @@ class Intermedia:
     
     @classmethod
     def get_term(cls,part:str,project:str,term:str):
-        try:
-            return deepcopy(cls.__data[part][project][str(term)])
-        except:
-            logging.error(f"no data in {part} {project} {term} ")
-            return None
+        if term !="config_id":
+            try:
+                return deepcopy(cls.__data[part][project][str(term)])
+            except:
+                logging.error(f"no data in {part} {project} {term} ")
+                return None
+        else:
+            try:
+                if term in cls.__data[part][project]:
+                    return cls.__data[part][project][str(term)]
+                else :
+                    return cls.__data["raw"][project][str(term)]
+            except:
+                logging.error(f"no data in {part} {project} {term} ")
+                return None
     
     @classmethod
     def get_str(cls):
@@ -80,7 +90,7 @@ class Intermedia:
         seqs=[]
         for part,values in cls.__data.items():
             for project,values2 in values.items():
-                seqs.append( (deepcopy(part),deepcopy(project),cls.get_term('raw',project,"config_id"),cls.get_term("raw",project,"seq_order")))
+                seqs.append( (deepcopy(part),deepcopy(project),cls.get_term(part,project,"config_id"),cls.get_term("raw",project,"seq_order")))
         if "seq_order" not in config:
             seqs.sort(key=lambda x:int(x[2]))
         else:
@@ -124,8 +134,9 @@ class Intermedia:
             else:
                 outdir=root_out_dir
             name=os.path.join(outdir,config[config_id]["cmd_name"])
-            orders=config[config_id]["order"]
+            orders=config[config_id]["order"]+config[config_id]["order_stat"]
             cmd_orders = config[config_id]["cmd_fusion_order"]
+            
             #for project in commands[config_id]:
                 #for cmd_part in cmd_orders:
             for cmd_part in cmd_orders:
@@ -169,10 +180,14 @@ class Intermedia:
         
 
     @classmethod
-    def get_attributes_batch(cls,part,attributes):
-       projects=list(cls.__data[part].keys())
-       for project in projects:
-           yield cls.get_term(part=part,project=project,term=attributes)
+    def get_attributes_batch(cls,part,attributes,with_project=False):
+        projects=list(cls.__data[part].keys())
+        for project in projects:
+            if not with_project:
+                yield cls.get_term(part=part,project=project,term=attributes)
+            else:
+                yield cls.get_term(part=part,project=project,term=attributes),project
+
 
     @classmethod
     def dumps(cls):
