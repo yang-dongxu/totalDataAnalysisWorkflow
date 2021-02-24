@@ -1,9 +1,9 @@
 seq_info_format:
-- ','
+- ","
 - project
 - seq1
 - seq2
-- seq_order
+#- seq_order
 #- config_id
 seq_order:
   - 1

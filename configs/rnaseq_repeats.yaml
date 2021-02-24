@@ -28,7 +28,7 @@ seq_info_format:
 - project
 - seq1
 - seq2
-#- seq_order
+- seq_order
 #- config_id
 seq_order:
   - 1
@@ -38,42 +38,19 @@ config_ids:
   - DEFAULT
 DEFAULT:
   cmd_fusion_order: ['1']
-  cmd_name: cmd
-  log_name: log
+  cmd_name: trs.cmd
+  log_name: trs.log
   data_name: data.yaml
   order:
+    - helloworld
     - trim
     - STAR
     - featureCounts
-    - set_featureCounts_out
+    - format
+    - redistribute
   order_stat: []
-  outdir: rnaseq
+  outdir: trsout
   workflow:
-    trim:
-      check_paths: []
-      cmd_part: '1'
-      father:
-        iseq1:
-        - raw
-        - seq1
-        iseq2:
-        - raw
-        - seq2
-      need: true
-      outdir: trimed
-      outparams:
-        example: '{project}/hello'
-      params:
-        ' ': '{iseq1} {iseq2}'
-        --fastqc: ''
-        --fastqc_args: '"--threads 8 "'
-        --length: '20'
-        --paired: ''
-        --quality: '20'
-        -o: '{outdir}'
-      path: trim_galore
-      variables: {}
-
     STAR:
       check_paths: []
       cmd_part: '1'
@@ -98,8 +75,6 @@ DEFAULT:
         --runThreadN: '10'
       path: STAR
       variables: {}
-
-    
     featureCounts:
       check_paths: []
       cmd_part: '1'
@@ -108,11 +83,11 @@ DEFAULT:
         - STAR
         - obam_sorted
       functions:
-        - mkdirs("{outputpath}")
+      - mkdirs("{outputpath}")
       need: true
       outdir: features
       outparams:
-        oname: '{oname}'
+        obam: '{outputpath}/{project}_Aligned.sortedByCoord.out.bam.featureCounts.bam'
       params:
         ' ': '{ibam}'
         --fracOverlap: '0.1'
@@ -120,33 +95,85 @@ DEFAULT:
         -B: ' '
         -M: ' '
         -O: ' '
+        -R: BAM
         -T: '10'
-        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.refGene.gtf
+        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.gtf
         -g: gene_id
-        -o: '{oname}'
+        -o: '{outputpath}/{project}_featurecounts'
         -p: ' '
       path: featureCounts
       variables:
         outputpath: '{outdir}/{project}'
-        oname: "{outputpath}/{project}_featurecounts"
-    
-    set_featureCounts_out:
-      need: true 
-      outdir: distribution
-      path: " "
-      variables: 
-        oname: "{outdir}/{project}.tsv"
+    format:
+      check_paths: []
+      cmd_part: '1'
       father:
-        iname:
-          - featureCounts
-          - oname
+        ibam:
+        - featureCounts
+        - obam
+      need: true
+      outdir: features
+      variables:
+       osam: "{outdir}/{project}/{project}_featurecounts.sam.txt"  
       params:
-        blank:
-          - "cp {iname} {oname}"
-          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tintensity' "
-      
+        blank: 
+        - "-x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x XN -x XS -x XS"
+        - "{ibam}"
+        - "> {osam}"
+        - ' | grep -e: \"XT:Z\" '
+        -@: '10'
+      path: samtools view
+      outparams: 
+       osam: "{osam}"
+    helloworld:
+      need: true
+      params:
+        ' ': '" hello world"'
+      path: echo
+    redistribute:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        isam:
+        - format
+        - osam
+      functions:
+      - mkdirs('{outputpath}')
+      need: true
+      outdir: distribution
+      params:
+        -f: '{isam}'
+        -m: 1
+        -n: '{outputpath}/{project}_distribution.txt'
+        -p: '12'
+        -r: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.saf
+        -s: '50'
+      path: redistribute_multiple_aligned_reads.r
+      variables:
+        outputpath: '{outdir}/{project}'
+    trim:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
+      need: true
+      outdir: trimed
       outparams:
-        oname: "{oname}"
-      
+        example: '{project}/hello'
+      params:
+        ' ': '{iseq1} {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --paired: ''
+        --quality: '20'
+        -o: '{outdir}'
+      path: trim_galore
+      variables: {}
 
   stat: {}

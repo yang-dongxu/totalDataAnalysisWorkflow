@@ -1,4 +1,5 @@
 rnaseq: rnaseq.yaml
+rnaseq_repeats: rnaseq_repeats.yaml
 chipseq: chipseq.yaml
 blank: blank.yaml
 wgbs: wgbs_pe.yaml
