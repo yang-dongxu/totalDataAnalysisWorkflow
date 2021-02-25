@@ -14,8 +14,8 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2]
-  cmd_name: trs.cmd
-  log_name: trs.log
+  cmd_name: cmd
+  log_name: log
   outdir : chipseqout
   data_name: data.yaml
   order:
