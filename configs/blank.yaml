@@ -3,7 +3,7 @@ seq_info_format:
 - project
 - seq1
 - seq2
-- seq_order
+#- seq_order
 #- config_id
 seq_order:
   - 1
@@ -13,14 +13,16 @@ config_ids:
   - DEFAULT
 
 DEFAULT:
-  cmd_fusion_order: ['1', 2]
-  cmd_name: trs.cmd
-  log_name: trs.log
-  outdir : chipseqout
+  cmd_fusion_order: ['1', 2,"STAT"] #Keep "STAT" in, for stat workflows
+  cmd_name: tas.cmd
+  log_name: tas.log
+  outdir : tasout
   data_name: data.yaml
 
   order:
     - helloworld
+
+  order_stat: []
 
 
   workflow:
@@ -34,3 +36,5 @@ DEFAULT:
           params:
             ' ': '" hello world"'
           path: echo
+  
+  stat: {}

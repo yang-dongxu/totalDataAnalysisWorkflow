@@ -143,7 +143,7 @@ DEFAULT:
       params:
         blank:
           - "sambamba markdup -r -t 10 {ibam} {sort_bam}\n"
-          - "sambamba sort -t 10 {sort_bam} -n {cleanbam}\n"
+          - "sambamba sort -t 10 {sort_bam} -o {cleanbam}\n"
           - "rm {sort_bam}"
     
       

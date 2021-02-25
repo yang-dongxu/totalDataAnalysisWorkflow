@@ -38,17 +38,19 @@ seq_order:
 config_ids: 
   - DEFAULT
 DEFAULT:
-  cmd_fusion_order: ['1',"STAT"]
+  cmd_fusion_order: ['1','2',"STAT"]
   cmd_name: cmd
   log_name: log
   data_name: data.yaml
   order:
     - trim
     - STAR
+    - toBwfrombam
     - featureCounts
     - set_featureCounts_out
   order_stat: 
-    - helloWorld
+    - star_log
+    - normalize_expression
   outdir: rnaseq
   workflow:
     trim:
@@ -74,9 +76,11 @@ DEFAULT:
         --quality: '20'
         -o: '{outdir}'
       path: trim_galore
-      variables: {}
+      variables: 
+        hello: "hello"
 
     STAR:
+      path: STAR
       check_paths: []
       cmd_part: '1'
       father:
@@ -88,8 +92,10 @@ DEFAULT:
         - oseq2
       need: true
       outdir: star
+
       variables:
-        outprefix:  "{outdir}/{project}/{project}_"
+        outprefix: "{outdir}/{project}/{project}_"
+
       outparams:
         obam_sorted: "{outprefix}Aligned.sortedByCoord.out.bam"
         ologfinalout: "{outprefix}Log.final.out"
@@ -99,15 +105,30 @@ DEFAULT:
       params:
         --genomeDir: /mnt/Storage2/home/zengshiyang/DB/STAR/hg38
         --outFileNamePrefix: '{outprefix}'
-        --outFilterMultimapNmax: '500'
+        --outFilterMultimapNmax: '10' ## default value, for repeats, set this num to 500
         --outSAMattributes: NH HI NM MD XS AS
         --outSAMtype: BAM SortedByCoordinate
         --readFilesCommand: zcat
         --readFilesIn: '{iseq1}  {iseq2}'
         --runThreadN: '10'
-      path: STAR
-      variables: {}
 
+    toBwfrombam:
+      need: true
+      path: " "
+      outdir: "Bw_bam"
+      cmd_part: '2'
+      father: 
+        ibam:
+          - STAR
+          - obam_sorted
+      variables:
+        obw: "{outdir}/{project}.bw"
+      params:
+        blank:
+          - "samtools index -b -@ 10 {ibam}  {ibam}.bai \n"
+          - "bamCoverage --samFlagExclude 12 --normalizeUsingRPKM -b {ibam} -o {obw} -p 10  \n"
+      outparams:
+        obw: "{obw}"
     
     featureCounts:
       check_paths: []
@@ -138,6 +159,7 @@ DEFAULT:
       variables:
         outputpath: '{outdir}/{project}'
         oname: "{outputpath}/{project}_featurecounts"
+     
     
     set_featureCounts_out:
       need: true 
@@ -152,27 +174,59 @@ DEFAULT:
       params:
         blank:
           - "cp {iname} {oname}"
-          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tintensity' "
+          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads' "
       
       outparams:
         oname: "{oname}"
       
 
   stat: 
-    helloWorld:
+    star_log:
       need: true 
-      path: " "
+      path: "python ~/scripts_ydx/extract_log_star.py"
+      outdir: "stat"
       iparams_list:
+        logs:
+          - STAR
+          - ologfinalout
+          - ","
         projects:
           - raw
           - project
           - ","
-      
-      iparams_single:
-        iintensity:
-          - set_featureCounts_out
-          - oname 
-          - "Female_14w_RNAseq_N_rep1"
+      variables:
+        oname: "{outdir}/mapping.stat.tsv"
       params:
         blank: 
-          - "echo {projects}"
+          - "{logs}"
+          - "{projects}"
+          - "{oname}"
+      
+      outparams:
+        omapping_stats: "{oname}"
+      
+    normalize_expression:
+      need: true 
+      path: " "
+      outdir: "stat"
+      iparams_list:
+        intensities:
+          - set_featureCounts_out
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        method: "FPKM"
+        oname_reads: "{outdir}/reads.stat.tsv"
+        oname_intensity: "{outdir}/{method}.tsv"
+        scripts_vstackfiles: "python ~/scripts_ydx/vstackfiles.py"
+        scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} {intensities} {projects} {oname_intensity} \n"
+          - "{scripts_normalize} {method} {oname_reads} {oname_intensity} project \n"
+
