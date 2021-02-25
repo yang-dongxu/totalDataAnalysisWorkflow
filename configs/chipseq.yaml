@@ -32,7 +32,6 @@ DEFAULT:
     - peaks_count
   
   order_stat: 
-    - run
     - stat_basic
 
   

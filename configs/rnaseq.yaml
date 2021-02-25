@@ -222,11 +222,11 @@ DEFAULT:
         method: "FPKM"
         oname_reads: "{outdir}/reads.stat.tsv"
         oname_intensity: "{outdir}/{method}.tsv"
-        scripts_vstackfiles: "python ~/scripts_ydx/vstackfiles.py"
+        scripts_vstackfiles: "python ~/scripts_ydx/vstack_files.py"
         scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
       
       params:
         blank:
-          - "{scripts_vstackfiles} {intensities} {projects} {oname_intensity} \n"
+          - "{scripts_vstackfiles} {intensities} {projects} {oname_reads} \n"
           - "{scripts_normalize} {method} {oname_reads} {oname_intensity} project \n"
 
