@@ -1,8 +1,9 @@
 
 seq_info_format:
-- ''
+- ','
 - project
 - seq1
+- seq2
 #- config_id
 config_ids:
   - DEFAULT
@@ -12,100 +13,158 @@ seq_order:
 DEFAULT:
   cmd_fusion_order:
     - '1'
-  cmd_name: trs.cmd
-  log_name: trs.log
+    - "STAT"
+  cmd_name: cmd
+  log_name: log
   data_name: data.yaml
   order:
     - fastqc
-    - mv
-    - trim_se
+    - trim_pe
+    - cd
     - bsmap
-    - sortbam
+    - sort_and_markdup
     - mcall
     - methratio
-  order_multiprojects:
-    - generate_cmd
-  outdir: trsout
+  order_stat: []
+  outdir: dnamethyout
   workflow:
-
-    bsmap:
-      check_paths: []
-      cmd_part: '1'
-      father:
-        iseq1:
-        - trim_se
-        - oseq
-      need: false
-      outdir: bsmap
-      outparams:
-        obam: "{outdir}/{project}.bam"
-      params:
-        -R: '  '
-        -a: '{iseq1}'
-        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
-        -n: '1'
-        -o: '{outdir}/{project}.bam'
-        -p: '12'
-        -r: '2'
-      path: bsmap
-      variables: {}
 
     fastqc:
       father:
         iseq1:
         - raw
         - seq1
+        iseq2:
+        - raw
+        - seq2
       need: false
       outdir: fastqc
       params:
-        ' ': '{iseq1}'
+        ' ': '{iseq1} {iseq2}'
         -o: '{outdir}'
         -t: '10'
       path: fastqc
-    mv:
-      need:  false
-      cmd_part: "1"
-      father:
-        iseq:
-        - raw
-        - seq1
-      path: "cp"
-      outdir: "trimed"
-      variables:
-        oseq: "{outdir}/{project}_1.fq.gz"
-      params:
-        blank:
-          - "{iseq}"
-          - "{oseq}"
-      outparams:
-        oseq_prefix: "{outdir}/{project}_1"
 
-    trim_se:
+    trim_pe: ## trim has defined oseq1 and oseq2 name in spfunctions
+      need: false
       check_paths: []
       cmd_part: '1'
+      path: trim_galore
       father:
-        iseq_pre:
-          - "mv"
-          - "oseq_prefix"
-      need: false 
+        iseq1:
+          - "raw"
+          - "seq1"
+        iseq2:
+          - raw
+          - seq2
       outdir: "trimed"
-      variables:
-        oseq: "{iseq_pre}_trimmed.fq.gz"
-        iseq: "{iseq_pre}.fq.gz"
-      outparams:
-        oseq: "{oseq}"
+      variables: 
+        log: "{outdir}/{project}.{part}.log"
       params:
-        ' ': '{iseq} '
+        ' ': '{iseq1}  {iseq2}'
         --fastqc: ''
+        --paired: ""
+        --basename: "{project}"
         --fastqc_args: '"--threads 8 "'
         --length: '20'
         --quality: '20'
+        -j: "4"
         -o: '{outdir}'
-      path: trim_galore
+        blank:
+          - "| tee {log} 2>&1 "
+      outparams:
+        oseq1: "{outdir}/{project}_val_1.fq.gz"
+        oseq2: "{outdir}/{project}_val_2.fq.gz"
+      
+    cd:
+      need: true 
+      path: "cd"
+      outdir: "."
+      variables:
+        target: "/mnt/Storage2/home/zengshiyang"
+      cmd_part: "1"
+      params:
+        blank: 
+          - "{target}"
+      outparams:
+        dir: "{target}"
 
-    sortbam: 
+    
+    bsmap:
+      need: true
+      outdir: bsmap
+      path: bsmap
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+          - trim_pe
+          - oseq1
+        iseq2:
+          - trim_pe
+          - oseq2
+        dir:
+          - cd
+          - dir
+
+      variables: 
+        obam: "{outdir}/{project}.bam"
+      variables_eval:
+        a: relpath('{iseq1}','{dir}')
+        b: relpath('{iseq2}','{dir}')
+        o: relpath('{obam}','{dir}')
+      params:
+        -R: '  '
+        -a: '{a}'
+        -b: '{b}'
+        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
+        -n: '1'
+        -o: '{o}'
+        -p: '12'
+        -r: '2'
+      outparams:
+        obam: "{obam}"
+
+
+    bismark:
       need: false
-      path: "samtools sort" 
+      path: "bismark"
+      outdir: bismark
+      cmd_part: '1'
+      check_paths: []
+
+      father:
+        iseq1:
+        - trim_pe
+        - oseq1
+        iseq2:
+        - trim_pe
+        - oseq2
+      
+      variables:
+        log: "{outdir}/{project}.{part}.log"
+
+      params:
+        "--genome_folder": "/mnt/Storage2/home/zengshiyang/DB/Bismark/hg38"
+        "-1" : '{iseq1}'  
+        "-2" :  "{iseq2}"
+        --gizp : " "
+        --non_directional: ' '
+        --output_dir: '{outdir}'
+        --basename: "{project}"
+        #--parallel: '2' ## 4 means 20 cores
+        -p: "3" ## bowtie2 threads, for non-direction, it cost 4*, and for directional 2*
+        blank:
+          - "| tee {log} 2>&1 \n"
+            
+      outparams:
+        olog: "{log}"
+        obam: "{outdir}/{project}.bam"
+        ostat: "{outdir}/{project}_PE_report.txt"
+
+    sort_and_markdup: 
+      need: true
+      path: " " 
       outdir: cleanBam
       cmd_part: "1"
       father: 
@@ -113,12 +172,13 @@ DEFAULT:
           - bsmap
           - obam
       variables:
-        outname: "{outdir}/{project}.clean.bam"
+        rm_dup_bam: "{outdir}/{project}.rmdup.bam"
+        cleanbam: "{outdir}/{project}.clean.bam"
       params:
-        -@: 10
-        -o: "{outname}"
         blank:
-          - "{ibam}"
+          - "sambamba markdup -r -t 10 {ibam} {rm_dup_bam}\n"
+          - "sambamba sort -t 10 {rm_dup_bam} -o {cleanbam}\n"
+          - "rm {rm_dup_bam}"
       outparams:
         obam: "{outdir}/{project}.clean.bam"
     
@@ -128,16 +188,22 @@ DEFAULT:
       outdir: mcall
       father:
         ibam:
-          - sortbam
+          - sort_and_markdup
           - obam
       variables:
         reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa"
         out: "{outdir}/{project}"
+        log: "{out}/{project}.{part}.log"
       params:
         -m: "{ibam}"
         -p: 12
         -r: "{reffa}"
         --outputDir: "{out}"
+        blank:
+          - "| tee {log}  2>&1 \n"
+      outparams:
+        olog: "log"
+        
     
     methratio:
       need: true
@@ -149,7 +215,7 @@ DEFAULT:
         - "mkdirs(os.path.split(\"{oname}\")[0])"
       father:
         ibam:
-          - sortbam
+          - sort_and_markdup
           - obam
       params:
         -o: "{oname}"

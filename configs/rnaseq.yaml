@@ -45,11 +45,13 @@ DEFAULT:
   order:
     - trim
     - STAR
+    - read_distribute
     - toBwfrombam
     - featureCounts
     - set_featureCounts_out
   order_stat: 
     - star_log
+    - intron_ratio
     - normalize_expression
   outdir: rnaseq
   workflow:
@@ -111,6 +113,24 @@ DEFAULT:
         --readFilesCommand: zcat
         --readFilesIn: '{iseq1}  {iseq2}'
         --runThreadN: '10'
+    
+    read_distribute:
+      need: true
+      path: "read_distribution.py"
+      outdir: "reads_distribution"
+      father:
+        ibam:
+          - STAR
+          - obam_sorted
+      variables:
+        oname: "{outdir}/{project}.reads_distribution"
+        ref: "/mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.gene.bed"
+      outparams:
+        oname: "{oname}"
+      params:
+        "-i" : "{ibam}"
+        "-r" : "{ref}"
+        ">" : "{oname}"
 
     toBwfrombam:
       need: true
@@ -204,6 +224,30 @@ DEFAULT:
       
       outparams:
         omapping_stats: "{oname}"
+
+    intron_ratio:
+      need: true 
+      path: "python ~/scripts_ydx/extract_readdistribution.py"
+      outdir: "stat"
+      iparams_list:
+        logs:
+          - read_distribute
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        oname: "{outdir}/reads_distribution.tsv"
+
+      outparams: 
+        oname: "{oname}"
+      params:
+        blank:
+          - "{logs}"
+          - "{projects}"
+          - "{oname}" 
       
     normalize_expression:
       need: true 

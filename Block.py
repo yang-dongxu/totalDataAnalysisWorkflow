@@ -12,7 +12,12 @@ def mkdirs(path):
         os.makedirs(path)
     return True
 
+def split(string:str,sep:str="_",index=0):
+    '''return i th part of string split by sep'''
+    return string.split(sep)[index]
 
+def relpath(path,start):
+    return os.path.relpath(path,start)
 
 class Block:
 
@@ -24,6 +29,7 @@ class Block:
         self.outparams=params.get("outparams",{})
         self.outdir=os.path.join(outdir,params.get("outdir",name))
         self.variables=params.get("variables",{})
+        self.variables_eval=params.get("variables_eval",{})
         self.params=params.get("params",{})
         self.functions=params.get("functions",[])
         self.functions_last=params.get("functions_last",[])
@@ -38,7 +44,9 @@ class Block:
         self.values={}
         self.cmd=""
         self.values["outdir"]=self.outdir
+        self.values["outdir_relative"]=params.get("outdir",name)
         self.values["project"]=self.project
+        self.values["part"]=self.name
 
         Intermedia.add_term(self.name,self.project,"config_id",config_id)
         Intermedia.add_term(self.name,self.project,"need",self.need)
@@ -52,6 +60,7 @@ class Block:
         self.sp_func(self,self.sp_func_args,self.sp_func_kwargs)
 
         self.process_variables()
+        self.process_variables_eval()
         self.process_functions()
         self.process_outparams()
         self.process_checkpath()
@@ -70,7 +79,13 @@ class Block:
         return 0
     def process_variables(self):
         for item,value in self.variables.items():
-            new_value=str.format_map(value,self.values)
+            new_value=str.format_map(str(value),self.values)
+            self.values[item]=new_value
+        return 0
+
+    def process_variables_eval(self):
+        for item,value in self.variables_eval.items():
+            new_value=eval(str.format_map(str(value),self.values))
             self.values[item]=new_value
         return 0
     def process_functions(self):
@@ -95,8 +110,8 @@ class Block:
     def wrap_cmd(self,cmd:str):
         reptimes=5
         project=self.values["project"]
-        header=f"echo \"{'#'*reptimes} start {project} {self.name} {'#'*reptimes}\" \n"
-        footer=f"echo \"{'#'*reptimes} stop {project} {self.name} {'#'*reptimes}\" \n"
+        header=f"echo \"{'#'*reptimes} start {self.name} {project} {'#'*reptimes}\" \n"
+        footer=f"echo \"{'#'*reptimes} stop {self.name} {project} {'#'*reptimes}\" \n"
         if self.need:
             return header+cmd.strip()+"\n"+footer
         else:
@@ -114,7 +129,7 @@ class Block:
                     logging.warning(f"for params, {this_key} has a list values")
                 else:
                     values=this_values
-                params_list.append("  ".join([str(this_key),str(values)]).format_map(self.values))
+                params_list.append("  ".join([str(this_key),str(values)]).format(**self.values))
         params_list+=[i.format_map(self.values) for i in blank_list]
         cmd_params=" ".join(params_list)
 

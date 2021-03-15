@@ -13,7 +13,7 @@ config_ids:
   - DEFAULT
 
 DEFAULT:
-  cmd_fusion_order: ['1', 2]
+  cmd_fusion_order: ['1', 2,"STAT"]
   cmd_name: cmd
   log_name: log
   outdir : chipseqout
@@ -32,7 +32,8 @@ DEFAULT:
     - peaks_count
   
   order_stat: 
-    - stat_basic
+    - stat_mapping
+    - stat_combine_reads_info
 
   
   workflow:
@@ -284,12 +285,53 @@ DEFAULT:
         otmp: "{tmp_name}"
     
   stat: 
-    run:
+    stat_mapping:
       need: true 
+      outdir: "stat"
+      path: "python ~/script_ydx/extract_log_bowtie2"
+      variables:
+        logname: "{outdir}/../log"
+        oname: "{outdir}/aligment.stats.tsv"
+        bowtie_part: "bowtie2"
+        peakcalling_part: "peakcalling"
+      params:
+        blank: 
+          - "{logname} {oname} {bowtie_part} {peakcalling_part} "
+      outparams:
+        mapping_stats: "{oname}"
+    
+    stat_combine_reads_info:
+      need: true 
+      outdir: "stat"
+      path: " "
+      iparams_single:
+        mapping_reads_info:
+          - stat_mapping
+          - mapping_stats
+          - "{project}"
+        frip_reads:
+          - frip_cal
+          - otmp
+          - ""
+        peaks:
+          - peaks_count
+          - otmp
+          - ""
+      variables:
+        header: "project\ttotal_reads\tuniq_mapping_reads\tmulti_mapping_reads\tfiltered_reads\treads_in_peaks\tpeaks"
+        tmp1: "{outdir}/tmp1"
+        tmp2: "{outdir}/tmp2"
+        tmp3: "{outdir}/tmp3"
+        oname: "{outdir}/aligment.full.stats.tsv"
+      params:
+        blank:
+          - "echo \"{header}\" > {oname} \n"
+          - "cat {mapping_reads_info} | sed '1d' | sort  -k1 > {tmp1} \n"
+          - "cat {frip_reads} | sord -k1 > {tmp2} \n"
+          - "cat {peaks} | sord -k1 > {tmp3} \n"
+          - "join {tmp1} {tmp2} | join {tmp3} >> {oname} \n"
+          - "rm {tmp1} {tmp2} {tmp3} \n "
 
-    stat_basic:
-      need: true 
-      father:  {}
         
     
 

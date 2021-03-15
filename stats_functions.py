@@ -27,7 +27,7 @@ class BlockStat(Block):
             part=options[0]
             attribute=options[1]
             sep=options[2] if len(options)>2 else 0
-            value=sep.join(Intermedia.get_attributes_batch(part,attribute))
+            value=sep.join(Intermedia.get_attributes_batch(part,attribute.format_map(self.values)))
             self.values[item]=value
         
         for item,options in self.iparams_single.items():
@@ -35,6 +35,8 @@ class BlockStat(Block):
             attribute=options[1]
             project=options[2] if len(options)>2 else ""
             value=Intermedia.get_term(part,project,attribute)
+            if not value:
+                value=list(set(Intermedia.get_attributes_batch(part,attribute.format_map(self.values))))[0]
             self.values[item]=value
         return 0
 
