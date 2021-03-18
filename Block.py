@@ -3,21 +3,12 @@ import sys
 import logging
 
 from Intermedia import Intermedia
+from basic_functions import *
 
 def default_func(cls,*args,**kwargs):
     return 0
 
-def mkdirs(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-    return True
 
-def split(string:str,sep:str="_",index=0):
-    '''return i th part of string split by sep'''
-    return string.split(sep)[index]
-
-def relpath(path,start):
-    return os.path.relpath(path,start)
 
 class Block:
 

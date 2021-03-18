@@ -119,7 +119,8 @@ DEFAULT:
         obam: "{outdir}/{project}.bam"
       params:
         --threads: 12
-        -F: 12 #filter out reads un-paired and can't mapping to genome
+        -f: "0x2" #filter out reads un-paired and can't mapping to genome
+        -q: 30
         -o: "{obam}"
         " ": "{isam}"
       
