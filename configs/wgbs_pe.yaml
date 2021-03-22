@@ -21,7 +21,9 @@ DEFAULT:
     - fastqc
     - trim_pe
     - cd
-    - bsmap
+    - bsmap1
+    - bsmap2
+    - merge_bam
     - sort_and_markdup
     - mcall
     - methratio
@@ -90,7 +92,7 @@ DEFAULT:
         dir: "{target}"
 
     
-    bsmap:
+    bsmap1:
       need: true
       outdir: bsmap
       path: bsmap
@@ -100,6 +102,36 @@ DEFAULT:
         iseq1:
           - trim_pe
           - oseq1
+        dir:
+          - cd
+          - dir
+
+      variables: 
+        obam: "{outdir}/{project}_1.bam"
+        olog: "{outdir}/{project}_1.log"
+      variables_eval:
+        a: relpath('{iseq1}','{dir}')
+        o: relpath('{obam}','{dir}')
+      params:
+        -R: '  '
+        -a: '{a}'
+        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
+        -n: '1'
+        -o: '{o}'
+        -p: '12'
+        -r: '2'
+        blank: 
+          - "2>&1 | tee {olog} "
+      outparams:
+        obam: "{obam}"
+
+    bsmap2:
+      need: true
+      outdir: bsmap
+      path: bsmap
+      check_paths: []
+      cmd_part: '1'
+      father:
         iseq2:
           - trim_pe
           - oseq2
@@ -108,20 +140,43 @@ DEFAULT:
           - dir
 
       variables: 
-        obam: "{outdir}/{project}.bam"
+        obam: "{outdir}/{project}_2.bam"
+        olog: "{outdir}/{project}_1.log"
+
       variables_eval:
-        a: relpath('{iseq1}','{dir}')
         b: relpath('{iseq2}','{dir}')
         o: relpath('{obam}','{dir}')
       params:
         -R: '  '
-        -a: '{a}'
-        -b: '{b}'
+        -a: '{b}'
         -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
         -n: '1'
         -o: '{o}'
         -p: '12'
         -r: '2'
+        blank: 
+          - "2>&1 | tee {olog} "
+      outparams:
+        obam: "{obam}"
+
+      
+    merge_bam:
+      need: true
+      outdir: bsmap
+      path: "sambamba merge"
+      cmd_part: "1"
+      father: 
+        ibam1:
+          - bsmap1
+          - obam
+        ibam2:
+          - bsmap2
+          - obam
+      variables:
+        obam: "{outdir}/{project}_2.bam"
+      params:
+        blank:
+          - "{obam} {ibam1} {ibam2} "
       outparams:
         obam: "{obam}"
 
@@ -169,7 +224,7 @@ DEFAULT:
       cmd_part: "1"
       father: 
         ibam:
-          - bsmap
+          - merge_bam
           - obam
       variables:
         rm_dup_bam: "{outdir}/{project}.rmdup.bam"
@@ -183,8 +238,8 @@ DEFAULT:
         obam: "{outdir}/{project}.clean.bam"
     
     mcall:
-      need: false
-      path: mcall
+      need: true
+      path: " "
       outdir: mcall
       father:
         ibam:
@@ -193,8 +248,11 @@ DEFAULT:
       variables:
         reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa"
         out: "{outdir}/{project}"
+        lnbam: "{out}/{project}.bam"
         log: "{out}/{project}.{part}.log"
       params:
+        " ": "ln -S {lnbam} {ibam}  &&"
+        mcall: " "
         -m: "{ibam}"
         -p: 12
         -r: "{reffa}"
