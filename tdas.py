@@ -13,19 +13,20 @@ import pickle
 
 ## start to read tdas.ini
 SCRIPT_PATH=os.path.join(os.path.split(__file__)[0])
+LIBRARY="TDAS"
 
 def parse_config_name(cp:configparser.ConfigParser,name="default"):
-    names=os.path.join(SCRIPT_PATH,cp.get("global",'config_name_list'))
+    names=os.path.join(SCRIPT_PATH,LIBRARY,cp.get("global",'config_name_list'))
     f=open(names)
     names_list=yaml.safe_load(f)
     f.close()
     if  name in names_list:
-        return os.path.join(SCRIPT_PATH,cp.get("global",'config_dir'),names_list[name])
+        return os.path.join(SCRIPT_PATH,LIBRARY,cp.get("global",'config_dir'),names_list[name])
     else:
-        logging.error(f"your config name {name} not in lists {names}, please add them and cp config file to {SCRIPT_PATH}/{cp.options('config_dir')} \n" )
+        logging.error(f"your config name {name} not in lists {names}, please add them and cp config file to {SCRIPT_PATH}/{LIBRARY}/{cp.options('config_dir')} \n" )
         sys.exit()
 
-ini=os.path.join(SCRIPT_PATH,"tdas.ini")
+ini=os.path.join(SCRIPT_PATH,LIBRARY,"tdas.ini")
 CP=configparser.ConfigParser()
 CP.read(ini)
 
@@ -37,9 +38,9 @@ script_name=os.path.abspath(__file__)
 #DEFAULT_CONFIG=os.path.join(SCRIPT_PATH,LIBRARY,"tdas_config.yaml")
 
 
-import parseinput
-from combine_modules import *
-from Intermedia import Intermedia
+from TDAS import parseinput
+from TDAS.combine_modules import *
+from TDAS.Intermedia import Intermedia
 
 logging.basicConfig(level=logging.WARNING)
 

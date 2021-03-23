@@ -3,7 +3,7 @@ import sys
 import logging
 
 from copy import deepcopy
-from Intermedia import Intermedia
+from TDAS.Intermedia import Intermedia
 
 def mkdirs(path):
     if not os.path.exists(path):

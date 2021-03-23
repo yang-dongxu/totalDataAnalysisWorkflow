@@ -1,14 +1,14 @@
-from Intermedia import Intermedia
 import sys
 import os
 
 from pandas.io.json._normalize import nested_to_record 
 import yaml
 
-from functions import *
-from stats_functions import BlockStat
-from working_functions import BlockWork
-from spfunctions import SPfucntions
+from TDAS.Intermedia import Intermedia
+from TDAS.functions import *
+from TDAS.stats_functions import BlockStat
+from TDAS.working_functions import BlockWork
+from TDAS.spfunctions import SPfucntions
 
 METHOD={
     "trim":trim,

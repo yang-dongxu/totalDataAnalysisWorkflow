@@ -2,8 +2,8 @@ import os
 import sys
 import logging
 
-from Intermedia import Intermedia
-from basic_functions import *
+from TDAS.Intermedia import Intermedia
+from TDAS.basic_functions import *
 
 def default_func(cls,*args,**kwargs):
     return 0

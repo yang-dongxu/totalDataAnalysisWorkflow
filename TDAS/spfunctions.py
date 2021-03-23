@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 
-from Intermedia import Intermedia
+from TDAS.Intermedia import Intermedia
 
 def default_func(block,*args,**kwargs):
     return 0

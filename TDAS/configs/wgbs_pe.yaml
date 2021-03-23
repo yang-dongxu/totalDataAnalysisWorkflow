@@ -115,7 +115,7 @@ DEFAULT:
       params:
         -R: '  '
         -a: '{a}'
-        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
+        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.clean.fa
         -n: '1'
         -o: '{o}'
         -p: '12'
@@ -149,7 +149,7 @@ DEFAULT:
       params:
         -R: '  '
         -a: '{b}'
-        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa
+        -d: /mnt/Storage2/home/zengshiyang/DB/Genome/hg38.clean.fa
         -n: '1'
         -o: '{o}'
         -p: '12'
@@ -246,7 +246,7 @@ DEFAULT:
           - sort_and_markdup
           - obam
       variables:
-        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa"
+        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.clean.fa"
         out: "{outdir}/{project}"
         lnbam: "{out}/{project}.bam"
         log: "{out}/{project}.{part}.log"
@@ -267,7 +267,7 @@ DEFAULT:
       need: true
       path: methratio.py
       variables:
-        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.fa"
+        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.clean.fa"
         oname: "{outdir}/{project}/{project}.txt"
       functions: 
         - "mkdirs(os.path.split(\"{oname}\")[0])"

@@ -2,8 +2,8 @@ import os
 import sys
 import logging
 
-from Intermedia import Intermedia
-from Block import Block,default_func,mkdirs
+from TDAS.Intermedia import Intermedia
+from TDAS.Block import Block,default_func,mkdirs
 
 
 

@@ -3,7 +3,7 @@ import os
 import logging
 from copy import deepcopy
 
-from combine_modules import Intermedia
+from TDAS.combine_modules import Intermedia
 
 DEFAULT_CONFIG_ID="DEFAULT"
 
