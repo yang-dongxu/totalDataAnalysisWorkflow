@@ -1,0 +1,295 @@
+seq_info_format:
+- ','
+- project
+- seq1
+- seq2
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids:
+  - DEFAULT
+DEFAULT:
+  cmd_fusion_order: ['1',"2","STAT"]
+  cmd_name:  rnaseq_repeats.cmd.txt
+  log_name: trs.log
+  data_name: data.yaml
+  order:
+    - STAR
+    - featureCounts
+    - format
+    - redistribute
+    - normalize
+    - featureCounts_transcript
+    - set_featureCounts_out
+  order_stat: 
+    - stat_combine_expression
+    - normalize_expression
+  outdir: "1.rnaseq_repeats"
+  workflow:
+    trim:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
+      need: false
+      outdir: trimed
+      outparams:
+        example: '{project}/hello'
+      params:
+        ' ': '{iseq1} {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --paired: ''
+        --quality: '20'
+        -o: '{outdir}'
+      path: trim_galore
+      variables: {}
+    STAR:
+      check_paths: []
+      cmd_part: '1'
+      functions:
+        - 'mkdirs("{outdir}/{project}")'
+      father:
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
+      need: false
+      outdir: star
+      outparams:
+        obam_sorted: "{outdir}/{project}/{project}_Aligned.sortedByCoord.out.bam"
+      params:
+        --genomeDir: /mnt/Storage2/home/zengshiyang/DB/STAR/hg38
+        --outFileNamePrefix: '{outdir}/{project}/{project}_'
+        --outFilterMultimapNmax: '500'
+        --outFilterMismatchNmax: "3"
+        --outSAMattributes: NH HI NM MD XS AS
+        --outSAMtype: BAM SortedByCoordinate
+        --readFilesCommand: zcat
+        --readFilesIn: '{iseq1}  {iseq2}'
+        --runThreadN: '10'
+      path: STAR
+      variables: {}
+    featureCounts:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        ibam:
+        - STAR
+        - obam_sorted
+      functions:
+      - mkdirs("{outputpath}")
+      need: false
+      outdir: features
+      outparams:
+        obam: '{outputpath}/{project}_Aligned.sortedByCoord.out.bam.featureCounts.bam'
+        olog: "{olog}"
+      params:
+        --fracOverlap: '0.1'
+        --fraction: ' '
+        -B: ' '
+        -M: ' '
+        -O: ' '
+        -F: "SAF"
+        -R: BAM
+        -T: '10'
+        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.repeats.main.saf
+        -g: gene_id
+        -o: '{outputpath}/{project}_featurecounts'
+        -p: ' '
+        ' ': '{ibam}'
+        blank:
+          - " 2>&1 | tee {olog}"
+      path: featureCounts
+      variables:
+        outputpath: '{outdir}/{project}'
+        olog: "{outdir}/{project}/{project}.log"
+    format:
+      check_paths: []
+      cmd_part: '2'
+      father:
+        ibam:
+        - featureCounts
+        - obam
+      need: false
+      outdir: features
+      variables:
+       osam: "{outdir}/{project}/{project}_featurecounts.sam.txt"
+      params:
+        blank:
+          - "-x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x XN -x XS -x XS"
+          - " {ibam}"
+          - ' | grep -e  "XT:Z" '
+          - "> {osam}"
+        -@: '10'
+      path: samtools view
+      outparams:
+       osam: "{osam}"
+
+    redistribute:
+      check_paths: []
+      cmd_part: '2'
+      father:
+        isam:
+        - format
+        - osam
+      functions:
+        - mkdirs('{outputpath}')
+      need: false
+      outdir: distribution
+      params:
+        -f: '{isam}'
+        -m: 1
+        -n: '{oname}'
+        -p: '12'
+        -r: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.repeats.main.saf
+        -s: '50'
+        blank:
+          - " 2>&1 | tee {olog}"
+          - "&& rm -f {isam}"
+      path: redistribute_multiple_aligned_reads.r
+      variables:
+        outputpath: '{outdir}/{project}'
+        olog: "{outdir}/{project}/{project}.{part}.log"
+        oname: "{outputpath}/{project}_distribution.txt"
+      outparams:
+        olog: "olog"
+        oname: "{oname}"
+        outputpath: "{outputpath}"
+
+    featureCounts_transcript:
+      check_paths: []
+      cmd_part: '1'
+      father:
+        ibam:
+        - STAR
+        - obam_sorted
+      functions:
+        - mkdirs("{outputpath}")
+      need: true
+      outdir: features
+      outparams:
+        oname: '{oname}'
+        olog: "{olog}"
+      params:
+        ' ': '{ibam}'
+        --fracOverlap: '0.1'
+        --fraction: ' '
+        -B: ' '
+        -M: ' '
+        -O: ' '
+        -F: "SAF"
+        -T: '10'
+        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.repeats.main.transcript.saf
+        -o: '{oname}'
+        -p: ' '
+        blank:
+          - " 2>&1 | tee {olog}"
+      path: featureCounts
+      variables:
+        outputpath: '{outdir}/{project}'
+        oname: "{outputpath}/{project}_featurecounts.transcript"
+        olog: "{outdir}/{project}/{project}.{part}.log"
+     
+    
+    set_featureCounts_out:
+      need: true 
+      outdir: distribution
+      path: " "
+      cmd_part: "1"
+      variables: 
+        oname: "{outdir}/{project}.tsv"
+      father:
+        iname:
+          - featureCounts_transcript
+          - oname
+      params:
+        blank:
+          - "cp {iname} {oname}"
+          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads' "
+      
+      outparams:
+        oname: "{oname}"
+    normalize:
+      need: true
+      outdir: "distribution"
+      path: " "
+      cmd_part: "2"
+      father:
+        distribution:
+          - redistribute
+          - oname
+        opath:
+          - redistribute
+          - outputpath
+      variables:
+        tmp_name: "{distribution}.tmp"
+        oname: "{opath}/{project}.{part}.tsv"
+        width: "/mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.repeats.length.tsv"
+        script: "python $MY_PATH/small_tools_of_bioinformatics/normalize_RNA_expression.py "
+      params:
+        blank:
+          - "cat {distribution} | sed -e '1d' | awk '{{print $1 \"\\t\" $2+$3}}' > {tmp_name} "
+          - "&& {script} {tmp_name} {width} {oname} "
+          - "&& rm {tmp_name}"
+      outparams:
+        oname: "{oname}"
+
+
+
+  stat: 
+    stat_combine_expression:
+      need: true 
+      outdir: "stat"
+      path: " "
+      iparams_list:
+        expressions:
+          - normalize
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        scripts_vstackfiles: "python ~/scripts_ydx/vstack_files.py"
+        oname: "{outdir}/expression_normalized.tsv"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} {expressions} {projects} {oname}"
+
+    normalize_expression:
+      need: true 
+      path: " "
+      outdir: "stat"
+      iparams_list:
+        intensities:
+          - set_featureCounts_out
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        method: "FPKM"
+        oname_reads: "{outdir}/reads.stat.tsv"
+        oname_intensity: "{outdir}/{method}.tsv"
+        scripts_vstackfiles: "python ~/scripts_ydx/vstack_files.py"
+        scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} {intensities} {projects} {oname_reads} \n"
+          - "{scripts_normalize} {method} {oname_reads} {oname_intensity} project \n"

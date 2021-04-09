@@ -18,7 +18,7 @@ class Block:
         self.path = params.get("path"," ")
         self.iparams=params.get("iparams",{})
         self.outparams=params.get("outparams",{})
-        self.outdir=os.path.join(outdir,params.get("outdir",name))
+        self.outdir=os.path.join(outdir,params.get("outdir",name)).format(project=project)
         self.variables=params.get("variables",{})
         self.variables_eval=params.get("variables_eval",{})
         self.params=params.get("params",{})

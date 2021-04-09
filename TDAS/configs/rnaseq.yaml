@@ -271,6 +271,6 @@ DEFAULT:
       
       params:
         blank:
-          - "{scripts_vstackfiles} {intensities} {projects} {oname_reads} \n"
-          - "{scripts_normalize} {method} {oname_reads} {oname_intensity} project \n"
+          - "{scripts_vstackfiles} {intensities} {projects} {oname_reads} "
+          - "&& {scripts_normalize} {method} {oname_reads} {oname_intensity} project "
 

@@ -1,157 +1,39 @@
-### Config file for https://github.com/yang-dongxu/totalDataAnalysisWorkflow
-### This config contain two part: seq_info_format to process the raw data info from -bf params in main function, and config for different work steps
-### Only two type key should to be contained in main envrionment: seq_info_format, and config/-id
-### For each configid, it should contain attributes below:
-### cmd_fusion_order: to define the order to output cmd
-### cmd_name and log_name: output bash script name 
-### order: how to perform function defined in workflow
-### order_stat: how to perform function defined in workflow_batch
-### workflow: define the functions need to perform on each project seperately, {project} is a bulid variable in this part
-### workflow_stat: define the functions need to perform on all projects together, or exclude some projects. 
-
-##### for config under each part of workflow, the key is the part name display in log, and it may contains attributes below:
-####### check_path: optional, assert path is exist, otherwise throw an exception an break out
-####### cmd_part: which part of cmd it generates
-####### father: it defines the attribute this function should get from others, in the format of {name in this function:[source,name in source function]}
-####### need: if turuns false, the cmd of this part will generate as comment
-####### path: how to excute this function
-####### outdir: optional, define the path to save output of this function, but you still define this in params
-####### variables: optional, can define some variables used in functions, params, and outparams
-####### params: exact params transfer to path, can use variables {project}, {outdir}, and others defined in variables part, for position specific ones, you can provide them in list format which will set at last, while named_params can be provided in a dict
-####### outparams: attributes can transfer to other functions is asked.
-
-
-
-
 seq_info_format:
 - ','
 - project
 - seq1
 - seq2
-- seq_order
 #- config_id
 seq_order:
   - 1
   - 2
   - 3
-config_ids: 
+config_ids:
   - DEFAULT
+
+env_variables:
+  - &DB "${{DB}}"
+  - &SCRIPTS "${{SCRIPTS}}"
 DEFAULT:
-  cmd_fusion_order: ['1']
-  cmd_name: trs.cmd
+  cmd_fusion_order: ['1',"2","3","STAT"]
+  cmd_name:  rnaseq_repeats.cmd.txt
   log_name: trs.log
   data_name: data.yaml
   order:
-    - helloworld
-    - trim
     - STAR
-    - featureCounts
-    - format
-    - redistribute
-  order_stat: []
-  outdir: trsout
+    - bam_interface
+    - homer_directory
+    - homer_counts_subfamily
+    - homer_counts
+    - normalize_homer_counts
+  order_stat: 
+    - stat_combine_expression
+  outdir: "1.rnaseq_repeats"
   workflow:
-    STAR:
-      check_paths: []
-      cmd_part: '1'
-      father:
-        iseq1:
-        - trim
-        - oseq1
-        iseq2:
-        - trim
-        - oseq2
-      need: true
-      outdir: star
-      outparams: {}
-      params:
-        --genomeDir: /mnt/Storage2/home/DB/STAR/hg38
-        --outFileNamePrefix: '{outdir}/{project}/{project}_'
-        --outFilterMultimapNmax: '500'
-        --outSAMattributes: NH HI NM MD XS AS
-        --outSAMtype: BAM SortedByCoordinate
-        --readFilesCommand: zcat
-        --readFilesIn: '{iseq1}  {iseq2}'
-        --runThreadN: '10'
-      path: STAR
-      variables: {}
-    featureCounts:
-      check_paths: []
-      cmd_part: '1'
-      father:
-        ibam:
-        - STAR
-        - obam_sorted
-      functions:
-      - mkdirs("{outputpath}")
-      need: true
-      outdir: features
-      outparams:
-        obam: '{outputpath}/{project}_Aligned.sortedByCoord.out.bam.featureCounts.bam'
-      params:
-        ' ': '{ibam}'
-        --fracOverlap: '0.1'
-        --fraction: ' '
-        -B: ' '
-        -M: ' '
-        -O: ' '
-        -R: BAM
-        -T: '10'
-        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.gtf
-        -g: gene_id
-        -o: '{outputpath}/{project}_featurecounts'
-        -p: ' '
-      path: featureCounts
-      variables:
-        outputpath: '{outdir}/{project}'
-    format:
-      check_paths: []
-      cmd_part: '1'
-      father:
-        ibam:
-        - featureCounts
-        - obam
-      need: true
-      outdir: features
-      variables:
-       osam: "{outdir}/{project}/{project}_featurecounts.sam.txt"  
-      params:
-        blank: 
-        - "-x BX -x NH -x AS -x nM -x HI -x IH -x NM -x uT -x MD -x jM -x jI -x XN -x XS -x XS"
-        - "{ibam}"
-        - "> {osam}"
-        - ' | grep -e: \"XT:Z\" '
-        -@: '10'
-      path: samtools view
-      outparams: 
-       osam: "{osam}"
-    helloworld:
-      need: true
-      params:
-        ' ': '" hello world"'
-      path: echo
-    redistribute:
-      check_paths: []
-      cmd_part: '1'
-      father:
-        isam:
-        - format
-        - osam
-      functions:
-      - mkdirs('{outputpath}')
-      need: true
-      outdir: distribution
-      params:
-        -f: '{isam}'
-        -m: 1
-        -n: '{outputpath}/{project}_distribution.txt'
-        -p: '12'
-        -r: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38.repeats.saf
-        -s: '50'
-      path: redistribute_multiple_aligned_reads.r
-      variables:
-        outputpath: '{outdir}/{project}'
     trim:
+      need: false
+      outdir: trimed
+      path: trim_galore
       check_paths: []
       cmd_part: '1'
       father:
@@ -161,10 +43,7 @@ DEFAULT:
         iseq2:
         - raw
         - seq2
-      need: true
-      outdir: trimed
-      outparams:
-        example: '{project}/hello'
+      variables: {}
       params:
         ' ': '{iseq1} {iseq2}'
         --fastqc: ''
@@ -173,7 +52,167 @@ DEFAULT:
         --paired: ''
         --quality: '20'
         -o: '{outdir}'
-      path: trim_galore
-      variables: {}
 
-  stat: {}
+      outparams:
+        example: '{project}/hello'
+
+    STAR:
+      check_paths: []
+      cmd_part: '1'
+      path: STAR
+      need: true
+      outdir: star
+      functions:
+        - 'mkdirs("{outdir}/{project}")'
+      father:
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
+      variables: 
+        db: *DB
+        genome: "{db}/hg38_main"
+      params:
+        --genomeDir:  "{genome}"
+        --outFileNamePrefix: '{outdir}/{project}/{project}_'
+        --outFilterMultimapNmax: '500'
+        --outFilterMismatchNmax: "3"
+        --outSAMattributes: NH HI NM MD XS AS
+        --outSAMtype: BAM SortedByCoordinate
+        --readFilesCommand: zcat
+        --readFilesIn: '{iseq1}  {iseq2}'
+        --runThreadN: '10'
+      outparams:
+        obam_sorted: "{outdir}/{project}/{project}_Aligned.sortedByCoord.out.bam"
+
+    
+    bam_interface:
+      need: true
+      path: " "
+      outdir: "STAR"
+
+      father:
+        obam:
+          - STAR
+          - obam_sorted
+
+      outparams:
+        obam: "{obam}"
+      
+    homer_directory:
+      need: true
+      cmd_part: "1"
+      path: "makeTagDirectory"
+      outdir: "homer/{project}"
+      variables:
+        olog: "{outdir}/{project}.homer.log"
+        oname: "{outdir}/tags"
+      father:
+        ibam:
+          - bam_interface
+          - obam
+      params:
+        blank:
+          - "{oname} {ibam} -keepOne"
+
+      outparams:
+        oname: "{oname}"
+        olog: "{olog}"
+
+    homer_counts_subfamily:
+      need: true
+      cmd_part: "2"
+      outdir: "homer/{project}"
+      path: "analyzeRepeats.pl repeats hg38"
+      father:
+        iname:
+          - homer_directory
+          - oname
+        olog:
+          - homer_directory
+          - olog
+
+      variables:
+        ocount: "{outdir}/{project}.subfamily.count"
+      params:
+        -d: "{iname}"
+        -count: "exons" 
+        blanks:
+          - "1>{ocount} "
+          - " 2>>{olog} "
+          - " & "
+      outparams:
+        ocount: "{ocount}"
+        olog: "{olog}"
+
+    homer_counts:
+      need: true
+      cmd_part: "2"
+      outdir: "homer/{project}"
+      path: "analyzeRepeats.pl repeats hg38"
+      father:
+        iname:
+          - homer_directory
+          - oname
+        olog:
+          - homer_directory
+          - olog
+      variables:
+        ocount: "{outdir}/{project}.transcript.count"
+
+      params:
+        -d: "{iname}"
+        -count: "exons" 
+        -noCondensing: ""
+        blanks:
+          - "1>{ocount} "
+          - " 2>>{olog} "
+          - " & "
+      outparams:
+        ocount: "{ocount}"
+        olog: "{olog}"
+
+    normalize_homer_counts:
+      need: true
+      cmd_part: "3"
+      outdir: "homer/{project}"
+
+      fathers:
+        icount: 
+          - homer_counts
+          - ocount
+      variables:
+        oname: "{outdir}/{project}.expression.tsv"
+        script_path: *SCRIPTS
+        homer_normalize: "{script_path}/normalize_homer_counts.sh"
+      params:
+        blank:
+          - "bash {homer_normalize} > {oname}"
+      outparams:
+        oname: "{oname}"
+      
+    
+
+  stat: 
+    stat_combine_expression:
+      need: true 
+      outdir: "stat"
+      path: " "
+      iparams_list:
+        expressions:
+          - normalize_homer_counts
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        scripts_vstackfiles: "python ~/scripts_ydx/vstack_files.py"
+        oname: "{outdir}/expression_normalized.tsv"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} {expressions} {projects} {oname}"

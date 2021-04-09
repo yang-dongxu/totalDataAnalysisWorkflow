@@ -79,6 +79,9 @@ def add_cmd(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
 
     new_parser.add_argument('-o','--outdir',dest="outdir",type=str,action="store",default="",help="output dir")
     new_parser.add_argument('-c','--config',dest="config",type=str,action="store",default=DEFAULT_CONFIG)
+    
+    new_parser.add_argument('-p','--threads',dest="threads",type=int,action="store",default=1,help="how many tasks can be put in back(&), by shell command wait")
+
     new_parser.set_defaults(func=run)
     return True
 
@@ -90,6 +93,9 @@ def add_stat(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
     input_opt.add_argument('-b','--byhand',dest="byhand",action="store_true",default=False,help='choose this to input seg pair info with a file, which is determine by -f\n')
 
     new_parser.add_argument('-f','--intermedia-info',dest="seqinfo",type=str,action="store",help="input a file with paired seqs, it should be a csv with no head, and contain three columns:project_name,pair1,pair2\n")
+
+    new_parser.add_argument('-p','--threads',dest="threads",type=int,action="store",default=1,help="how many tasks can be put in back(&), by shell command wait")
+
 
     new_parser.add_argument('-c','--config',dest="config",type=str,action="store",default=DEFAULT_CONFIG)
     new_parser.set_defaults(func=stat)
@@ -117,7 +123,7 @@ def stat(args):
     else:
         with open(os.path.abspath(args.seqinfo)) as f:
             Intermedia.loads(f.read())
-    stat_process(config)
+    stat_process(config,threads=args.threads)
     
     
     
@@ -154,7 +160,7 @@ def run(args):
         seqs=parseinput.parse_inputdir(config,args.input_dir)
     
     logging.info("start processing")
-    process(config,outdir)
+    process(config,outdir,threads=args.threads)
     logging.info("processing end")
     logging.info(Intermedia.get_str())
 

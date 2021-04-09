@@ -2,6 +2,7 @@ import logging
 import sys
 import os
 from copy import deepcopy
+#from totalDataAnalysisWorkflow.TDAS.Block import default_func
 import yaml
 
 try:
@@ -105,7 +106,73 @@ class Intermedia:
             yield i[0], i[1], i[2]
 
     @classmethod
+    def iter_raw(cls):
+        raw="raw"
+        seqs=[]
+        for project in cls.__data[raw]:
+            seqs.append( (project,cls.get_term(raw,project,"config_id"),cls.get_term(raw,project,"seq_order")))
+        return seqs
+    
+    @classmethod
+    def __prepare_cmd_out(cls,config,root_out_dir=""):
+        commands=[]
+        seq_infos=cls.iter_raw()
+        seq_orders=[str(i) for i in config["seq_order"]]
+
+        for config_id in config["config_ids"]:
+            this_config=config[config_id]
+            orders=this_config["order"]
+            stat_orders=this_config["order_stat"]
+            #cmd_name=this_config["cmd_name"]
+            if len(root_out_dir)==0:
+                outdir=os.path.join(os.getcwd(),config[config_id]["outdir"])
+            else:
+                outdir=root_out_dir
+            cmd_name=os.path.join(outdir,this_config["cmd_name"])
+            cmd_parts=[str(i) for i in this_config["cmd_fusion_order"]]
+
+            for seq_info in [i for i in seq_infos if i[1] == config_id]:
+                project,a,seq_order=seq_info
+                for part in orders:
+                    command=cls.get_term(part,project,"command")
+                    cmd_part=str(cls.get_term(part,project,"command_part"))
+                    try:
+                        assert cmd_part in cmd_parts
+                    except:
+                        logging.error(f"{part} in {config_id} has undefined cmd_part, SKIP!")
+                        continue
+                    assert seq_order in seq_orders
+                    command_attribute={"command":command,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":seq_orders.index(seq_order),"part":part,"name":cmd_name}
+                    commands.append(command_attribute)
+
+            for part in stat_orders:
+                project="STAT"
+                command=cls.get_term(part,project,"command")
+                cmd_part=str(cls.get_term(part,project,"command_part"))
+                try:
+                    assert cmd_part in cmd_parts
+                except:
+                    logging.error(f"{part} in {config_id} has undefined cmd_part, SKIP!")
+                    continue
+                command_attribute={"command":command,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":0,"part":part,"name":cmd_name}
+                commands.append(command_attribute)
+        return deepcopy(commands)
+    
+    @classmethod
     def __get_cmd_out_project_first(cls,config,root_out_dir=""):
+        commands=cls.__prepare_cmd_out(config,root_out_dir)
+        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["project"],x["part"]))
+        return [(i["name"],i["command"]) for i in commands]
+    
+    def __get_cmd_out_part_first(cls,config,root_out_dir=""):
+        commands=cls.__prepare_cmd_out(config,root_out_dir)
+        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["part"],x["project"]))
+        return [(i["name"],i["command"]) for i in commands]
+    
+    
+
+    @classmethod
+    def __get_cmd_out_project_first_old(cls,config,root_out_dir=""):
         #commands={config_id:{project:{cmd_part:[commands]}}}
         commands={}
         for i in cls.iter(config):
@@ -153,30 +220,23 @@ class Intermedia:
                             name_to_commands[name].append(command)
         return name_to_commands
 
-    @classmethod
-    def __get_cmd_out_part_first(cls,config):
-        #commands={config_id:{cmd_part:{project:[commands]}}}
-        commands={}
-        for i in cls.get_next_to_process():
-            part,project,config_id=i
-            command=cls.get_term(part=part,project=project,term="command")
-            cmd_part=cls.get_term(part=part,project=project,term="command_part")
-            if config_id in commands:
-                if cmd_part in commands:
-                    if project in commands[config_id][cmd_part]:
-                        commands[config_id][cmd_part][project].append(command)
-                    else:
-                        commands[config_id][cmd_part][project]=[command]
-                else:
-                    commands[config_id][cmd_part]={project:[command]}
-            else:
-                commands[config_id]={cmd_part:{project:[command]}}
-        return commands
+
             
     @classmethod
     def get_cmd_out(cls,config,root_out_dir="",project_first=True):
         if project_first:
-            return cls.__get_cmd_out_project_first(config,root_out_dir=root_out_dir)
+            commands= cls.__get_cmd_out_project_first(config,root_out_dir=root_out_dir)
+        else:
+            commands=cls.__get_cmd_out_part_first(config,root_out_dir=root_out_dir)
+        results={}
+
+        for name in list(set([i[0] for i in commands])):
+            results[name]=[]
+            
+        for info in commands:
+            name,cmd=info
+            results[name].append(cmd)
+        return results
         
 
     @classmethod

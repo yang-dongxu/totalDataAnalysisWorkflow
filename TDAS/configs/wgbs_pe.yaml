@@ -108,7 +108,7 @@ DEFAULT:
 
       variables: 
         obam: "{outdir}/{project}_1.bam"
-        olog: "{outdir}/{project}_1.log"
+        olog: "{outdir}/{project}.{part}.log"
       variables_eval:
         a: relpath('{iseq1}','{dir}')
         o: relpath('{obam}','{dir}')
@@ -141,7 +141,7 @@ DEFAULT:
 
       variables: 
         obam: "{outdir}/{project}_2.bam"
-        olog: "{outdir}/{project}_1.log"
+        olog: "{outdir}/{project}.{part}.log"
 
       variables_eval:
         b: relpath('{iseq2}','{dir}')
@@ -173,7 +173,7 @@ DEFAULT:
           - bsmap2
           - obam
       variables:
-        obam: "{outdir}/{project}_2.bam"
+        obam: "{outdir}/{project}.bam"
       params:
         blank:
           - "{obam} {ibam1} {ibam2} "
@@ -251,9 +251,9 @@ DEFAULT:
         lnbam: "{out}/{project}.bam"
         log: "{out}/{project}.{part}.log"
       params:
-        " ": "ln -S {lnbam} {ibam}  &&"
+        " ": "ln -s {lnbam} {ibam}  &&"
         mcall: " "
-        -m: "{ibam}"
+        -m: "{lnbam}"
         -p: 12
         -r: "{reffa}"
         --outputDir: "{out}"
@@ -267,7 +267,7 @@ DEFAULT:
       need: true
       path: methratio.py
       variables:
-        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/hg38.clean.fa"
+        reffa: "/mnt/Storage2/home/zengshiyang/DB/Genome/Enterobacteria_phage_lambda.fa"
         oname: "{outdir}/{project}/{project}.txt"
       functions: 
         - "mkdirs(os.path.split(\"{oname}\")[0])"
