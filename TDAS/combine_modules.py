@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 
 from pandas.io.json._normalize import nested_to_record 
 import yaml
@@ -23,9 +24,10 @@ from TDAS.spfunctions import SPfucntions,mkdirs
 def determine_bg(cmd):
     if "&" not in cmd:
         return 0
-    if "&&" not in  cmd:
+    if re.search("[^&]&[^&\d]",cmd):
         return 1
-    
+    else:
+        return 0
     last_cmd=cmd.split("&&")[-1]
     return determine_bg(last_cmd)
      

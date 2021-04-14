@@ -142,31 +142,33 @@ class Intermedia:
                         logging.error(f"{part} in {config_id} has undefined cmd_part, SKIP!")
                         continue
                     assert seq_order in seq_orders
-                    command_attribute={"command":command,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":seq_orders.index(seq_order),"part":part,"name":cmd_name}
+                    order=orders.index(part)
+                    command_attribute={"command":command,"order":order,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":seq_orders.index(seq_order),"part":part,"name":cmd_name}
                     commands.append(command_attribute)
 
             for part in stat_orders:
                 project="STAT"
                 command=cls.get_term(part,project,"command")
                 cmd_part=str(cls.get_term(part,project,"command_part"))
+                order=stat_orders.index(part)
                 try:
                     assert cmd_part in cmd_parts
                 except:
                     logging.error(f"{part} in {config_id} has undefined cmd_part, SKIP!")
                     continue
-                command_attribute={"command":command,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":0,"part":part,"name":cmd_name}
+                command_attribute={"command":command,"order":order,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":0,"part":part,"name":cmd_name}
                 commands.append(command_attribute)
         return deepcopy(commands)
     
     @classmethod
     def __get_cmd_out_project_first(cls,config,root_out_dir=""):
         commands=cls.__prepare_cmd_out(config,root_out_dir)
-        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["project"],x["part"]))
+        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["project"],x["part"]))
         return [(i["name"],i["command"]) for i in commands]
     
     def __get_cmd_out_part_first(cls,config,root_out_dir=""):
         commands=cls.__prepare_cmd_out(config,root_out_dir)
-        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["part"],x["project"]))
+        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["part"],x["project"]))
         return [(i["name"],i["command"]) for i in commands]
     
     

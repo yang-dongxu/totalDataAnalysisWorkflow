@@ -12,7 +12,7 @@ config_ids:
   - DEFAULT
 
 env_variables:
-  - &DB "${{DB}}"
+  - &DB "${{DB}}/hg38"
   - &SCRIPTS "${{SCRIPTS}}"
 DEFAULT:
   cmd_fusion_order: ['1',"2","3","STAT"]
@@ -31,8 +31,8 @@ DEFAULT:
   outdir: "1.rnaseq_repeats"
   workflow:
     trim:
-      need: false
-      outdir: trimed
+      need: true
+      outdir: 1.trimed
       path: trim_galore
       check_paths: []
       cmd_part: '1'
@@ -61,7 +61,7 @@ DEFAULT:
       cmd_part: '1'
       path: STAR
       need: true
-      outdir: star
+      outdir: 2.star
       functions:
         - 'mkdirs("{outdir}/{project}")'
       father:
@@ -91,7 +91,7 @@ DEFAULT:
     bam_interface:
       need: true
       path: " "
-      outdir: "STAR"
+      outdir: "2.star"
 
       father:
         obam:
@@ -105,7 +105,7 @@ DEFAULT:
       need: true
       cmd_part: "1"
       path: "makeTagDirectory"
-      outdir: "homer/{project}"
+      outdir: "3.homer/{project}"
       variables:
         olog: "{outdir}/{project}.homer.log"
         oname: "{outdir}/tags"
@@ -124,7 +124,7 @@ DEFAULT:
     homer_counts_subfamily:
       need: true
       cmd_part: "2"
-      outdir: "homer/{project}"
+      outdir: "3.homer/{project}"
       path: "analyzeRepeats.pl repeats hg38"
       father:
         iname:
@@ -150,7 +150,7 @@ DEFAULT:
     homer_counts:
       need: true
       cmd_part: "2"
-      outdir: "homer/{project}"
+      outdir: "3.homer/{project}"
       path: "analyzeRepeats.pl repeats hg38"
       father:
         iname:
@@ -177,7 +177,7 @@ DEFAULT:
     normalize_homer_counts:
       need: true
       cmd_part: "3"
-      outdir: "homer/{project}"
+      outdir: "3.homer/{project}"
 
       fathers:
         icount: 
@@ -198,7 +198,7 @@ DEFAULT:
   stat: 
     stat_combine_expression:
       need: true 
-      outdir: "stat"
+      outdir: "0.stat"
       path: " "
       iparams_list:
         expressions:
@@ -210,7 +210,8 @@ DEFAULT:
           - project
           - ","
       variables:
-        scripts_vstackfiles: "python ~/scripts_ydx/vstack_files.py"
+        scripts_dir: *SCRIPTS
+        scripts_vstackfiles: "python {scripts_dir}/vstack_files.py"
         oname: "{outdir}/expression_normalized.tsv"
       
       params:

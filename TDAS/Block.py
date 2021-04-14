@@ -101,8 +101,8 @@ class Block:
     def wrap_cmd(self,cmd:str):
         reptimes=5
         project=self.values["project"]
-        header=f"echo \"{'#'*reptimes} start {self.name} {project} {'#'*reptimes}\" \n"
-        footer=f"echo \"{'#'*reptimes} stop {self.name} {project} {'#'*reptimes}\" \n"
+        header=f"echo \"{'#'*reptimes} start {self.name} {project} at TIME `date +'%D %T'` {'#'*reptimes}\" \n"
+        footer=f"echo \"{'#'*reptimes} stop {self.name} {project} at TIME `date +'%D %T'` {'#'*reptimes}\" \n"
         if self.need:
             return header+cmd.strip()+"\n"+footer
         else:

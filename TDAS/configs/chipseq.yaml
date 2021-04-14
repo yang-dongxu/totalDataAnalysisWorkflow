@@ -1,3 +1,7 @@
+env_variables:
+  - &DB "${{DB}}/hg38"
+  - &SCRIPTS "${{SCRIPTS}}"
+
 seq_info_format:
 - ","
 - project
@@ -13,8 +17,8 @@ config_ids:
   - DEFAULT
 
 DEFAULT:
-  cmd_fusion_order: ['1', 2,"STAT"]
-  cmd_name: cmd
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: chpseq.cmd.txt
   log_name: log
   outdir : chipseqout
   data_name: data.yaml
@@ -24,12 +28,14 @@ DEFAULT:
     - bowtie2
     - to_bam
     - sort_and_markdup
-    - peakcalling
+    - peakcalling14
+    - peakcalling2
     - toBwfrompeakcalling
-    - toBwfrombam
     - ceas
     - frip_cal
     - peaks_count
+    - bw_summary
+    - metagene
   
   order_stat: 
     - stat_mapping
@@ -39,7 +45,7 @@ DEFAULT:
   workflow:
     fastqc:
       need: true
-      outdir: fastqc
+      outdir: 1.trimed
       path: fastqc
       father:
         iseq1:
@@ -58,6 +64,7 @@ DEFAULT:
         outdir: "{outdir}"
    
     trim:
+      path: trim_galore
       check_paths: []
       cmd_part: '1'
       father:
@@ -68,7 +75,9 @@ DEFAULT:
         - raw
         - seq2
       need: true
-      outdir: trimed
+      outdir: 1.trimed
+      variables:
+        log: "{outdir}/{project}.{part}.log"
       outparams:
         example: '{project}/hello'
       params:
@@ -79,12 +88,13 @@ DEFAULT:
         --paired: ''
         --quality: '20'
         -o: '{outdir}'
-      path: trim_galore
-      variables: {}
+        blank:
+          - "| tee {log} 2>&1 "
+      
 
     bowtie2:
       need: true
-      outdir: Sam
+      outdir: 2.mapping
       path: bowtie2
       father: 
         iseq1:
@@ -94,23 +104,28 @@ DEFAULT:
           - trim
           - oseq2
       variables:
+        olog: "{outdir}/{project}.log"
         osam: "{outdir}/{project}.sam"
+        db: *DB
       params:
         -q: " "
-        -x: "/mnt/Storage/data/Bowtie/hg38"
+        -x: "{db}/hg38"
         --no-discordant: " "
-        --thread: 10
+        --threads: 10
         -q: " "
         "-1": "{iseq1}"
         "-2": "{iseq2}" 
         -S: "{osam}"
+        blank:
+          - "2>&1 | tee {olog} "
       outparams:
         osam: "{osam}"
+        olog: "{olog}"
       
     to_bam:
       need: true
       path: "samtools view"
-      outdir: Bam
+      outdir: 3.Bam
       father: 
         isam:
           - bowtie2
@@ -120,7 +135,7 @@ DEFAULT:
       params:
         --threads: 12
         -f: "0x2" #filter out reads un-paired and can't mapping to genome
-        -q: 30
+        #-q: 10 ## for repeats, turn this off, becaust their poor mapq
         -o: "{obam}"
         " ": "{isam}"
       
@@ -130,7 +145,7 @@ DEFAULT:
     sort_and_markdup: 
       need: true
       path: " "
-      outdir: cleanBam
+      outdir: 4.cleanBam
       father:
         ibam:
           - to_bam
@@ -143,23 +158,55 @@ DEFAULT:
       
       params:
         blank:
-          - "sambamba markdup -r -t 10 {ibam} {sort_bam}\n"
-          - "sambamba sort -t 10 {sort_bam} -o {cleanbam}\n"
-          - "rm {sort_bam}"
+          - "sambamba markdup -r -t 10 {ibam} {sort_bam} &&"
+          - "sambamba sort -t 10 {sort_bam} -o {cleanbam} &&"
+          - "rm {sort_bam} "
     
       
       outparams:
         obam: "{cleanbam}"
-      
-    peakcalling:
-      need: true
-      path: "macs2 callpeak"
-      outdir: peakcalling
+
+    peakcalling14:
+      need: true 
+      path: "macs14 "
+      outdir: 5.peakcalling
       father:
         ibam:
           - sort_and_markdup
           - obam
       cmd_part: 2
+      variables:
+        olog: "{outdir}/{project}/{project}.macs14.log"
+      params:
+        -f: BAM
+        --SPMR: " "
+        -g: hs
+        -B: " "
+        -p: 1e-5
+        --keep-dup: 1
+        --nomodel: " "
+        --shiftsize: 73
+        -n: "{project}"
+        --outdir: "{outdir}/{project}"
+        -t: "{ibam}"
+        blank:
+          - "2>&1 | tee {olog} &"
+      outparams:
+        opeaks: "{outdir}/{project}/{project}_peaks.bed"
+        osummits: "{outdir}/{project}/{project}_summits.bed"
+        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+      
+    peakcalling2:
+      need: true
+      path: "macs2 callpeak"
+      outdir: 5.peakcalling
+      father:
+        ibam:
+          - sort_and_markdup
+          - obam
+      cmd_part: 2
+      variables:
+        olog: "{outdir}/{project}/{project}.macs2.log"
       params:
         -f: BAMPE
         --SPMR: " "
@@ -172,6 +219,8 @@ DEFAULT:
         -n: "{project}"
         --outdir: "{outdir}/{project}"
         -t: "{ibam}"
+        blank:
+          - "2>&1 | tee {olog} &"
     
       outparams:
         opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
@@ -181,15 +230,16 @@ DEFAULT:
     toBwfrompeakcalling:
       need: true
       path: " "
-      outdir: "Bw_peakcalling"
+      outdir: "6.Bw"
       cmd_part: 2
       father:
         ibdg: 
-          - peakcalling
+          - peakcalling2
           - obdg
       variables:
         obw: "{outdir}/{project}.bw"
-        chromSize: "/mnt/Storage2/home/zengshiyang/DB/chromSize/hg38.chrom.sizes"
+        db: *DB
+        chromSize: "{db}/hg38/hg38.chrom.sizes"
       params:
         blank: 
           - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp \n"
@@ -198,33 +248,18 @@ DEFAULT:
       outparams:
         obw: "{obw}"
 
-    toBwfrombam:
-      need: true
-      path: " "
-      outdir: "Bw_bam"
-      cmd_part: 2
-      father: 
-        ibam:
-          - sort_and_markdup
-          - obam
-      variables:
-        obw: "{outdir}/{project}.bw"
-      params:
-        blank:
-          - "samtools index -b -@ 10 {ibam}  {ibam}.bai \n"
-          - "bamCoverage --samFlagExclude 12 --normalizeUsingRPKM -b {ibam} -o {obw} -p 10  \n"
     
     ceas:
       need: true 
       path: ceasBW
-      outdir: "ceas"
+      outdir: "7.ceas"
       cmd_part: 2
       father:
         ibw:
           - toBwfrompeakcalling
           - obw
         ibed: 
-          - peakcalling
+          - peakcalling2
           - osummits
       variables:
         oname: "{outdir}/{project}/{project}"
@@ -250,10 +285,10 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: "stat"
+      outdir: "0.stat"
       father: 
         ipeaks:
-          - peakcalling
+          - peakcalling14
           - opeaks
         ibam:
           - sort_and_markdup
@@ -271,10 +306,10 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: "stat"
+      outdir: "0.stat"
       father: 
         ipeaks:
-          - peakcalling
+          - peakcalling14
           - opeaks
       variables:
         tmp_name: "{outdir}/{part}"
@@ -284,11 +319,59 @@ DEFAULT:
           - "cat {ipeaks}  | wc -l >> {tmp_name}"
       outparams:
         otmp: "{tmp_name}"
+
+    bw_summary:
+      need: true 
+      cmd_part: 3
+      path: ""
+      outdir: "8.bw_summary"
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_summary_bed.py"
+        db: *DB
+        bed: "{db}/hg38/hg38.refGene.main.promoter_2k.bed"
+        osummary: "{outdir}/{project}.summary"
+      params:
+        blank:
+          - "python {script} {bed} {ibw} {osummary} &"
+      outparams:
+        osummary: "{osummary}"
+      
+    metagene:
+      need: true 
+      cmd_part: 3
+      path: " "
+      outdir: "9.metegene"
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_summary_bed_bins.py"
+        db: *DB
+        bed: "{db}/hg38/hg38.refGene.main.bed"
+        oname: "{outdir}/{project}.tsv"
+
+      params:
+        -b: "{bed}"
+        -w: "{ibw}"
+        -n: "100"
+        -o: "{oname}"
+        blank: 
+          - " &"
+      outparams:
+        oname: "{oname}"
+
     
   stat: 
     stat_mapping:
       need: true 
-      outdir: "stat"
+      outdir: "0.stat"
       path: "python ~/script_ydx/extract_log_bowtie2"
       variables:
         logname: "{outdir}/../log"
@@ -303,7 +386,7 @@ DEFAULT:
     
     stat_combine_reads_info:
       need: true 
-      outdir: "stat"
+      outdir: "0.stat"
       path: " "
       iparams_single:
         mapping_reads_info:
