@@ -33,13 +33,11 @@ DEFAULT:
     - toBwfrompeakcalling
     - ceas
     - frip_cal
-    - peaks_count
     - bw_summary
     - metagene
   
   order_stat: 
-    - stat_mapping
-    - stat_combine_reads_info
+    - stat_log
 
   
   workflow:
@@ -104,12 +102,12 @@ DEFAULT:
           - trim
           - oseq2
       variables:
-        olog: "{outdir}/{project}.log"
+        olog: "{outdir}/{project}.mapping.log"
         osam: "{outdir}/{project}.sam"
         db: *DB
       params:
         -q: " "
-        -x: "{db}/hg38"
+        -x: "{db}/hg38_main"
         --no-discordant: " "
         --threads: 10
         -q: " "
@@ -179,15 +177,12 @@ DEFAULT:
         olog: "{outdir}/{project}/{project}.macs14.log"
       params:
         -f: BAM
-        --SPMR: " "
         -g: hs
-        -B: " "
         -p: 1e-5
         --keep-dup: 1
         --nomodel: " "
         --shiftsize: 73
-        -n: "{project}"
-        --outdir: "{outdir}/{project}"
+        -n: "{outdir}/{project}/{project}"
         -t: "{ibam}"
         blank:
           - "2>&1 | tee {olog} &"
@@ -195,6 +190,7 @@ DEFAULT:
         opeaks: "{outdir}/{project}/{project}_peaks.bed"
         osummits: "{outdir}/{project}/{project}_summits.bed"
         obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        olog: "{olog}"
       
     peakcalling2:
       need: true
@@ -226,6 +222,7 @@ DEFAULT:
         opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
         osummits: "{outdir}/{project}/{project}_summits.bed"
         obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        olog: "{olog}"
     
     toBwfrompeakcalling:
       need: true
@@ -239,12 +236,12 @@ DEFAULT:
       variables:
         obw: "{outdir}/{project}.bw"
         db: *DB
-        chromSize: "{db}/hg38/hg38.chrom.sizes"
+        chromSize: "{db}/hg38_main.chrom.sizes"
       params:
         blank: 
-          - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp \n"
-          - "bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} \n"
-          - "rm -f  {ibdg}.tmp \n"
+          - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
+          - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
+          - "&& rm -f  {ibdg}.tmp "
       outparams:
         obw: "{obw}"
 
@@ -264,11 +261,13 @@ DEFAULT:
       variables:
         oname: "{outdir}/{project}/{project}"
         bisize: 2000
+        db: *DB
+        chromsize: "{db}/hg38_main.chrom.sizes"
       functions:
         - "mkdirs('{outdir}/{project}')"
       params:
         -g: "/mnt/Storage2/home/zengshiyang/DB/refGene/hg38.sqlite3"
-        -l: "/mnt/Storage2/home/zengshiyang/DB/chromSize/hg38.chrom.sizes"
+        -l: "{chromsize}"
         --dump: " "
         --bg: " "
         --bisizes: "{bisize}"
@@ -294,31 +293,15 @@ DEFAULT:
           - sort_and_markdup
           - obam
       variables:
-        tmp_name: "{outdir}/{part}"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/peak_stat.py"
+        oname: "{outdir}/{project}/{project}.{part}.stat"
       params:
         blank:
-          - "echo -ne \"{project}\t\" >> {tmp_name} \n"
-          - "bedtools intersect -wa -u -a {ibam} -b {ipeaks}  | wc -l >> {tmp_name}"
+          - "{script} {ipeaks} {ibam} {oname}"
       outparams:
-        otmp: "{tmp_name}"
+        oname: "{oname}"
     
-    peaks_count:
-      need: true
-      cmd_part: 2
-      path: " "
-      outdir: "0.stat"
-      father: 
-        ipeaks:
-          - peakcalling14
-          - opeaks
-      variables:
-        tmp_name: "{outdir}/{part}"
-      params:
-        blank:
-          - "echo -ne \"{project}\t\" >> {tmp_name} \n"
-          - "cat {ipeaks}  | wc -l >> {tmp_name}"
-      outparams:
-        otmp: "{tmp_name}"
 
     bw_summary:
       need: true 
@@ -333,7 +316,7 @@ DEFAULT:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_summary_bed.py"
         db: *DB
-        bed: "{db}/hg38/hg38.refGene.main.promoter_2k.bed"
+        bed: "{db}/hg38.refGene.main.promoter_2k.bed"
         osummary: "{outdir}/{project}.summary"
       params:
         blank:
@@ -354,10 +337,11 @@ DEFAULT:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_summary_bed_bins.py"
         db: *DB
-        bed: "{db}/hg38/hg38.refGene.main.bed"
+        bed: "{db}/hg38.refGene.main.bed"
         oname: "{outdir}/{project}.tsv"
 
       params:
+        "python ": "{script}"
         -b: "{bed}"
         -w: "{ibw}"
         -n: "100"
@@ -369,54 +353,40 @@ DEFAULT:
 
     
   stat: 
-    stat_mapping:
-      need: true 
-      outdir: "0.stat"
-      path: "python ~/script_ydx/extract_log_bowtie2"
-      variables:
-        logname: "{outdir}/../log"
-        oname: "{outdir}/aligment.stats.tsv"
-        bowtie_part: "bowtie2"
-        peakcalling_part: "peakcalling"
-      params:
-        blank: 
-          - "{logname} {oname} {bowtie_part} {peakcalling_part} "
-      outparams:
-        mapping_stats: "{oname}"
-    
-    stat_combine_reads_info:
+    stat_log:
       need: true 
       outdir: "0.stat"
       path: " "
-      iparams_single:
-        mapping_reads_info:
-          - stat_mapping
-          - mapping_stats
-          - "{project}"
-        frip_reads:
-          - frip_cal
-          - otmp
-          - ""
+      iparams_list:
+        bowtie2:
+          - bowtie2
+          - olog
+          - ","
+        macs:
+          - peakcalling14
+          - olog
+          - ","
         peaks:
-          - peaks_count
-          - otmp
-          - ""
+          - frip_cal
+          - oname 
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
       variables:
-        header: "project\ttotal_reads\tuniq_mapping_reads\tmulti_mapping_reads\tfiltered_reads\treads_in_peaks\tpeaks"
-        tmp1: "{outdir}/tmp1"
-        tmp2: "{outdir}/tmp2"
-        tmp3: "{outdir}/tmp3"
-        oname: "{outdir}/aligment.full.stats.tsv"
+        script_dir: *SCRIPTS
+        script: "{script_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.stats"
       params:
-        blank:
-          - "echo \"{header}\" > {oname} \n"
-          - "cat {mapping_reads_info} | sed '1d' | sort  -k1 > {tmp1} \n"
-          - "cat {frip_reads} | sord -k1 > {tmp2} \n"
-          - "cat {peaks} | sord -k1 > {tmp3} \n"
-          - "join {tmp1} {tmp2} | join {tmp3} >> {oname} \n"
-          - "rm {tmp1} {tmp2} {tmp3} \n "
-
-        
+        "python" : "{script}"
+        "-b": "{bowtie2}"
+        "-m": "{macs}"
+        "-l": "{peaks}"
+        "-p": "{project}"
+        "-o": "{oname}"
+      outparams:
+        oname: "oname"
     
 
 
