@@ -24,7 +24,7 @@ from TDAS.spfunctions import SPfucntions,mkdirs
 def determine_bg(cmd):
     if "&" not in cmd:
         return 0
-    if re.search("[^&]&[^&\d]",cmd):
+    if re.search("[^&]&[^&\d]",cmd) and cmd[0] != "#":
         return 1
     else:
         return 0

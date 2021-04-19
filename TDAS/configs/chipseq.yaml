@@ -86,6 +86,7 @@ DEFAULT:
         --paired: ''
         --quality: '20'
         -o: '{outdir}'
+        --cores: 2
         blank:
           - "| tee {log} 2>&1 "
       
@@ -167,14 +168,14 @@ DEFAULT:
     peakcalling14:
       need: true 
       path: "macs14 "
-      outdir: 5.peakcalling
+      outdir: "5.peakcalling/{project}"
       father:
         ibam:
           - sort_and_markdup
           - obam
       cmd_part: 2
       variables:
-        olog: "{outdir}/{project}/{project}.macs14.log"
+        olog: "{outdir}/{project}.macs14.log"
       params:
         -f: BAM
         -g: hs
@@ -182,14 +183,14 @@ DEFAULT:
         --keep-dup: 1
         --nomodel: " "
         --shiftsize: 73
-        -n: "{outdir}/{project}/{project}"
+        -n: "{outdir}/{project}"
         -t: "{ibam}"
         blank:
           - "2>&1 | tee {olog} &"
       outparams:
-        opeaks: "{outdir}/{project}/{project}_peaks.bed"
-        osummits: "{outdir}/{project}/{project}_summits.bed"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        opeaks: "{outdir}/{project}_peaks.bed"
+        osummits: "{outdir}/{project}_summits.bed"
+        obdg: "{outdir}/{project}_treat_pileup.bdg"
         olog: "{olog}"
       
     peakcalling2:
@@ -239,7 +240,8 @@ DEFAULT:
         chromSize: "{db}/hg38_main.chrom.sizes"
       params:
         blank: 
-          - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
+          - "wait "
+          - "&& sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
           - "&& rm -f  {ibdg}.tmp "
       outparams:

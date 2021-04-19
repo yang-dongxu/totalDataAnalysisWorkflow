@@ -1,26 +1,6 @@
-### Config file for https://github.com/yang-dongxu/totalDataAnalysisWorkflow
-### This config contain two part: seq_info_format to process the raw data info from -bf params in main function, and config for different work steps
-### Only two type key should to be contained in main envrionment: seq_info_format, and config/-id
-### For each configid, it should contain attributes below:
-### cmd_fusion_order: to define the order to output cmd
-### cmd_name and log_name: output bash script name 
-### order: how to perform function defined in workflow
-### order_stat: how to perform function defined in workflow_batch
-### workflow: define the functions need to perform on each project seperately, {project} is a bulid variable in this part
-### workflow_stat: define the functions need to perform on all projects together, or exclude some projects. 
-
-##### for config under each part of workflow, the key is the part name display in log, and it may contains attributes below:
-####### check_path: optional, assert path is exist, otherwise throw an exception an break out
-####### cmd_part: which part of cmd it generates
-####### father: it defines the attribute this function should get from others, in the format of {name in this function:[source,name in source function]}
-####### need: if turuns false, the cmd of this part will generate as comment
-####### path: how to excute this function
-####### outdir: optional, define the path to save output of this function, but you still define this in params
-####### variables: optional, can define some variables used in functions, params, and outparams
-####### params: exact params transfer to path, can use variables {project}, {outdir}, and others defined in variables part, for position specific ones, you can provide them in list format which will set at last, while named_params can be provided in a dict
-####### outparams: attributes can transfer to other functions is asked.
-
-
+env_variables:
+  - &DB "${{DB}}/hg38"
+  - &SCRIPTS "${{SCRIPTS}}"
 
 
 seq_info_format:
@@ -50,10 +30,10 @@ DEFAULT:
     - featureCounts
     - set_featureCounts_out
   order_stat: 
-    - star_log
-    - intron_ratio
+    - stat_log
     - normalize_expression
-  outdir: rnaseq
+  outdir: rnaseqout
+
   workflow:
     trim:
       check_paths: []
@@ -66,7 +46,7 @@ DEFAULT:
         - raw
         - seq2
       need: true
-      outdir: trimed
+      outdir: 1.trimed
       outparams:
         example: '{project}/hello'
       params:
@@ -82,6 +62,8 @@ DEFAULT:
         hello: "hello"
 
     STAR:
+      need: true
+      outdir: 2.star      
       path: STAR
       check_paths: []
       cmd_part: '1'
@@ -92,20 +74,18 @@ DEFAULT:
         iseq2:
         - trim
         - oseq2
-      need: true
-      outdir: star
-
       variables:
         outprefix: "{outdir}/{project}/{project}_"
-
+        db: *DB
+        genomedir: "{db}/star/main"
       outparams:
         obam_sorted: "{outprefix}Aligned.sortedByCoord.out.bam"
-        ologfinalout: "{outprefix}Log.final.out"
+        olog: "{outprefix}Log.final.out"
         ologout: "{outprefix}Log.out"
         ologprogressout: "{outprefix}Log.progress.out"
         osj: "{outprefix}SJ.out.tab"
       params:
-        --genomeDir: /mnt/Storage2/home/zengshiyang/DB/STAR/hg38
+        --genomeDir: "{genomedir}"
         --outFileNamePrefix: '{outprefix}'
         --outFilterMultimapNmax: '10' ## default value, for repeats, set this num to 500
         --outSAMattributes: NH HI NM MD XS AS
@@ -117,14 +97,15 @@ DEFAULT:
     read_distribute:
       need: true
       path: "read_distribution.py"
-      outdir: "reads_distribution"
+      outdir: "3.reads_distribution"
       father:
         ibam:
           - STAR
           - obam_sorted
       variables:
         oname: "{outdir}/{project}.reads_distribution"
-        ref: "/mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.gene.bed"
+        db: *DB
+        ref: "{db}/hg38.refGene.main.bed"
       outparams:
         oname: "{oname}"
       params:
@@ -135,7 +116,7 @@ DEFAULT:
     toBwfrombam:
       need: true
       path: " "
-      outdir: "Bw_bam"
+      outdir: "4.bw"
       cmd_part: '2'
       father: 
         ibam:
@@ -151,6 +132,9 @@ DEFAULT:
         obw: "{obw}"
     
     featureCounts:
+      need: true
+      path: featureCounts
+      outdir: 5.featuresCounts
       check_paths: []
       cmd_part: '1'
       father:
@@ -159,8 +143,11 @@ DEFAULT:
         - obam_sorted
       functions:
         - mkdirs("{outputpath}")
-      need: true
-      outdir: features
+
+      variables:
+        outputpath: '{outdir}/{project}'
+        oname: "{outputpath}/{project}_featurecounts"
+        olog: "{outputpath}/{project}.{part}.log"
       outparams:
         oname: '{oname}'
       params:
@@ -175,18 +162,16 @@ DEFAULT:
         -g: gene_id
         -o: '{oname}'
         -p: ' '
-      path: featureCounts
-      variables:
-        outputpath: '{outdir}/{project}'
-        oname: "{outputpath}/{project}_featurecounts"
-     
+        blank:
+          - "2>&1 | tee {olog}"
+
     
     set_featureCounts_out:
       need: true 
-      outdir: distribution
+      outdir: 5.featuresCounts
       path: " "
       variables: 
-        oname: "{outdir}/{project}.tsv"
+        oname: "{outdir}/{project}/{project}.tsv"
       father:
         iname:
           - featureCounts
@@ -200,59 +185,41 @@ DEFAULT:
         oname: "{oname}"
       
 
-  stat: 
-    star_log:
+  stat:
+    stat_log:
       need: true 
-      path: "python ~/scripts_ydx/extract_log_star.py"
-      outdir: "stat"
+      outdir: "0.stat"
+      path: ""
       iparams_list:
-        logs:
+        star:
           - STAR
-          - ologfinalout
+          - olog
           - ","
         projects:
           - raw
           - project
           - ","
-      variables:
-        oname: "{outdir}/mapping.stat.tsv"
-      params:
-        blank: 
-          - "{logs}"
-          - "{projects}"
-          - "{oname}"
-      
-      outparams:
-        omapping_stats: "{oname}"
-
-    intron_ratio:
-      need: true 
-      path: "python ~/scripts_ydx/extract_readdistribution.py"
-      outdir: "stat"
-      iparams_list:
-        logs:
+        readDistribute:
           - read_distribute
           - oname
           - ","
-        projects:
-          - raw
-          - project
-          - ","
       variables:
-        oname: "{outdir}/reads_distribution.tsv"
-
-      outparams: 
-        oname: "{oname}"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.stats"
       params:
-        blank:
-          - "{logs}"
-          - "{projects}"
-          - "{oname}" 
+        "python" : "{script}"
+        "-s": "{star}"
+        "-r": "{readDistribute}"
+        "-p": "{project}"
+        "-o": "{oname}"
+      outparams:
+        oname: "oname"
       
     normalize_expression:
       need: true 
       path: " "
-      outdir: "stat"
+      outdir: "0.stat"
       iparams_list:
         intensities:
           - set_featureCounts_out

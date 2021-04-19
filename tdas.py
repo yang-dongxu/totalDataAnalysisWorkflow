@@ -137,7 +137,7 @@ def generate_config(args):
     return True
 
 def parse_config(configname:str)->dict:
-    if not os.path.exists(configname):
+    if not os.path.isfile(configname):
         name=parse_config_name(CP,configname)
     else:
         name=os.path.abspath(configname)

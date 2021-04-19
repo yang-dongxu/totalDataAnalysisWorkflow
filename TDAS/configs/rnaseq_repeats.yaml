@@ -17,7 +17,7 @@ env_variables:
 DEFAULT:
   cmd_fusion_order: ['1',"2","3","STAT"]
   cmd_name:  rnaseq_repeats.cmd.txt
-  log_name: trs.log
+  log_name: log
   data_name: data.yaml
   order:
     - STAR
@@ -26,6 +26,7 @@ DEFAULT:
     - homer_counts_subfamily
     - homer_counts
     - normalize_homer_counts
+    - normalize_homer_counts_subfamily
   order_stat: 
     - stat_combine_expression
   outdir: "1.rnaseq_repeats"
@@ -73,7 +74,7 @@ DEFAULT:
         - seq2
       variables: 
         db: *DB
-        genome: "{db}/hg38_main"
+        genome: "{db}/star/main"
       params:
         --genomeDir:  "{genome}"
         --outFileNamePrefix: '{outdir}/{project}/{project}_'
@@ -115,7 +116,7 @@ DEFAULT:
           - obam
       params:
         blank:
-          - "{oname} {ibam} -keepOne"
+          - "{oname} {ibam} -keepOne > {olog}"
 
       outparams:
         oname: "{oname}"
@@ -139,7 +140,7 @@ DEFAULT:
       params:
         -d: "{iname}"
         -count: "exons" 
-        blanks:
+        blank:
           - "1>{ocount} "
           - " 2>>{olog} "
           - " & "
@@ -166,7 +167,7 @@ DEFAULT:
         -d: "{iname}"
         -count: "exons" 
         -noCondensing: ""
-        blanks:
+        blank:
           - "1>{ocount} "
           - " 2>>{olog} "
           - " & "
@@ -179,17 +180,36 @@ DEFAULT:
       cmd_part: "3"
       outdir: "3.homer/{project}"
 
-      fathers:
+      father:
         icount: 
           - homer_counts
           - ocount
       variables:
-        oname: "{outdir}/{project}.expression.tsv"
+        oname: "{outdir}/{project}.transcript.expression.tsv"
         script_path: *SCRIPTS
         homer_normalize: "{script_path}/normalize_homer_counts.sh"
       params:
         blank:
-          - "bash {homer_normalize} > {oname}"
+          - "wait && bash {homer_normalize}  {icount} > {oname}"
+      outparams:
+        oname: "{oname}"
+
+    normalize_homer_counts_subfamily:
+      need: true
+      cmd_part: "3"
+      outdir: "3.homer/{project}"
+
+      father:
+        icount: 
+          - homer_counts_subfamily
+          - ocount
+      variables:
+        oname: "{outdir}/{project}.subfamily.expression.tsv"
+        script_path: *SCRIPTS
+        homer_normalize: "{script_path}/normalize_homer_counts.sh"
+      params:
+        blank:
+          - "bash {homer_normalize} {icount} > {oname}"
       outparams:
         oname: "{oname}"
       
@@ -205,6 +225,10 @@ DEFAULT:
           - normalize_homer_counts
           - oname
           - ","
+        expressions_subfamily:
+          - normalize_homer_counts_subfamily
+          - oname
+          - ","
         projects:
           - raw
           - project
@@ -212,8 +236,10 @@ DEFAULT:
       variables:
         scripts_dir: *SCRIPTS
         scripts_vstackfiles: "python {scripts_dir}/vstack_files.py"
-        oname: "{outdir}/expression_normalized.tsv"
+        oname_transcript: "{outdir}/transcript.expression_normalized.tsv"
+        oname_subfamily: "{outdir}/subfamily.expression_normalized.tsv"
       
       params:
         blank:
-          - "{scripts_vstackfiles} {expressions} {projects} {oname}"
+          - "{scripts_vstackfiles} {expressions} {projects} {oname_transcript}"
+          - "{scripts_vstackfiles} {expressions_subfamily} {projects} {oname_subfamily}"
