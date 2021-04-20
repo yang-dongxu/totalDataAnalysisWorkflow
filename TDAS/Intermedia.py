@@ -166,6 +166,7 @@ class Intermedia:
         commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["project"],x["part"]))
         return [(i["name"],i["command"]) for i in commands]
     
+    @classmethod
     def __get_cmd_out_part_first(cls,config,root_out_dir=""):
         commands=cls.__prepare_cmd_out(config,root_out_dir)
         commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["part"],x["project"]))
@@ -225,11 +226,14 @@ class Intermedia:
 
             
     @classmethod
-    def get_cmd_out(cls,config,root_out_dir="",project_first=True):
+    def get_cmd_out(cls,config,root_out_dir="",mode=0):
+        project_first=False
+        if mode==0:
+            project_first=True
         if project_first:
-            commands= cls.__get_cmd_out_project_first(config,root_out_dir=root_out_dir)
+            commands= cls.__get_cmd_out_project_first(config=config,root_out_dir=root_out_dir)
         else:
-            commands=cls.__get_cmd_out_part_first(config,root_out_dir=root_out_dir)
+            commands=cls.__get_cmd_out_part_first(config=config,root_out_dir=root_out_dir)
         results={}
 
         for name in list(set([i[0] for i in commands])):

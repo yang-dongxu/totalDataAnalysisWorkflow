@@ -286,7 +286,7 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: "0.stat"
+      outdir: "5.peakcalling/{project}"
       father: 
         ipeaks:
           - peakcalling14
@@ -297,10 +297,10 @@ DEFAULT:
       variables:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/peak_stat.py"
-        oname: "{outdir}/{project}/{project}.{part}.stat"
+        oname: "{outdir}/{project}.{part}.stat"
       params:
         blank:
-          - "{script} {ipeaks} {ibam} {oname}"
+          - "python {script} {ipeaks} {ibam} {oname}"
       outparams:
         oname: "{oname}"
     
@@ -385,7 +385,7 @@ DEFAULT:
         "-b": "{bowtie2}"
         "-m": "{macs}"
         "-l": "{peaks}"
-        "-p": "{project}"
+        "-p": "{projects}"
         "-o": "{oname}"
       outparams:
         oname: "oname"

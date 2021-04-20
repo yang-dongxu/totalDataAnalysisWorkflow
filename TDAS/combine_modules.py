@@ -62,9 +62,11 @@ def out_intermedia_new(config):
     return True  
 
 
-def process(config:dict,root_out_dir="",stat=True,threads=8):
+def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0):
+    project_num=0
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
+        project_num+=1
         this_config=config[configid]
         if len(root_out_dir)==0:
             outdir=os.path.join(os.getcwd(),this_config["outdir"])
@@ -84,18 +86,19 @@ def process(config:dict,root_out_dir="",stat=True,threads=8):
         outdir=""
     else:
         outdir=os.path.abspath(root_out_dir)
+    threads=min(threads,project_num)
     out_intermedia_new(config)
     if stat:
-        stat_process(config=config,root_out_dir=root_out_dir,threads=threads)
+        stat_process(config=config,root_out_dir=root_out_dir,threads=threads,mode=mode)
     else:
-        out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir),threads=threads)
+        out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir,mode=mode),threads=threads)
     return True
 
 
 
 
 
-def stat_process(config:dict,root_out_dir="",threads=8):
+def stat_process(config:dict,root_out_dir="",threads=8,mode=0):
     for config_id in config.get("config_ids",["DEFAULT"]):
         this_config=config[config_id]
 
@@ -114,7 +117,7 @@ def stat_process(config:dict,root_out_dir="",threads=8):
         outdir=""
     else:
         outdir=os.path.abspath(root_out_dir)
-    out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir),threads=threads)
+    out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir,mode=mode),threads=threads)
     out_intermedia_new(config)
 
     print("stat modules is under developing")
