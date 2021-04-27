@@ -27,14 +27,11 @@ DEFAULT:
     - STAR
     - read_distribute
     - toBwfrombam
-    - stringtie
-    - stringtie_format
     - featureCounts
     - set_featureCounts_out
   order_stat: 
     - stat_log
     - normalize_expression
-    - combine_stringtie_out
   outdir: rnaseqout
 
   workflow:
@@ -115,8 +112,6 @@ DEFAULT:
         "-i" : "{ibam}"
         "-r" : "{ref}"
         ">" : "{oname}"
-        blank:
-          - " & "
 
     toBwfrombam:
       need: true
@@ -132,65 +127,14 @@ DEFAULT:
       params:
         blank:
           - "samtools index -b -@ 10 {ibam}  {ibam}.bai \n"
-          - "bamCoverage --samFlagExclude 12 --normalizeUsing  RPKM -b {ibam} -o {obw} -p 10  \n"
+          - "bamCoverage --samFlagExclude 12 --normalizeUsingRPKM -b {ibam} -o {obw} -p 10  \n"
       outparams:
         obw: "{obw}"
-
-    stringtie:
-      need: true
-      path: " "
-      outdir: "5.counts/{project}"
-      cmd_part: "1"
-      father:
-        ibam:
-          - STAR
-          - obam_sorted
-
-      variables:
-        db: *DB
-        gtf: "{db}/hg38.refGene.main.gtf"
-        threads: 8
-        ocount: "{outdir}/{project}.stringtie.count.tsv"
-        ogtf: "{outdir}/{project}.stringtie.cov.gtf"
-        obal: "{outdir}/{project}_Ballgown"
-        olog: "{outdir}/{project}.stringtie.log"
-      functions:
-        - mkdirs("{outdir}")
-
-      params:
-        blank:
-          - "stringtie {ibam} -p {threads} -G {gtf} -l {project} -A {ocount} -o {ogtf} -e -b {obal} "
-          - "2>&1 | tee {olog}"
-      outparams:
-        ocount: "{ocount}"
-        ogtf: "{ogtf}"
-        obaldir: "{obal}"
-        olog: "{olog}"
-
-    stringtie_format:
-      need: true
-      path: " "
-      outdir: "5.counts/{project}"
-      cmd_part: "1"
-      father:
-        igtf:
-          - stringtie
-          - ogtf
-      variables:
-        oname: "{outdir}/{project}.stringtie.transcript.count.tsv"
-        script_dir: *SCRIPTS
-        script: "{script_dir}/gtf_to_table.py"
-      params:
-        blank:
-          - "python {script} -l 1000 -o {oname}"
-      outparams:
-        oname: "{oname}"
-
     
     featureCounts:
       need: true
       path: featureCounts
-      outdir: 5.counts
+      outdir: 5.featuresCounts
       check_paths: []
       cmd_part: '1'
       father:
@@ -201,8 +145,6 @@ DEFAULT:
         - mkdirs("{outputpath}")
 
       variables:
-        db: *DB
-        gtf: "{db}/hg38.refGene.main.gtf"
         outputpath: '{outdir}/{project}'
         oname: "{outputpath}/{project}_featurecounts"
         olog: "{outputpath}/{project}.{part}.log"
@@ -216,7 +158,7 @@ DEFAULT:
         -M: ' '
         -O: ' '
         -T: '10'
-        -a: "{gtf}"
+        -a: /mnt/Storage2/home/zengshiyang/DB/refGene/hg38/hg38.refGene.gtf
         -g: gene_id
         -o: '{oname}'
         -p: ' '
@@ -226,7 +168,7 @@ DEFAULT:
     
     set_featureCounts_out:
       need: true 
-      outdir: 5.counts
+      outdir: 5.featuresCounts
       path: " "
       variables: 
         oname: "{outdir}/{project}/{project}.tsv"
@@ -273,33 +215,9 @@ DEFAULT:
       outparams:
         oname: "oname"
       
-
-    combine_stringtie_out:
-      need: true
-      path: ""
-      outdir: "0.stat"
-      iparams_list:
-        intensities:
-          - stringtie_format
-          - oname
-          - ","
-        projects:
-          - raw
-          - project
-          - ","
-      variables:
-        script_dir: *SCRIPTS
-        scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
-        oname: "{outdir}/stringtie.exp.stat.tsv"
-
-      params:
-        blank:
-          - "python {scripts_vstackfiles} -t {intensities} -p {projects} -o {oname} "
-
-
     normalize_expression:
       need: true 
-      path: ""
+      path: " "
       outdir: "0.stat"
       iparams_list:
         intensities:
@@ -314,12 +232,11 @@ DEFAULT:
         method: "FPKM"
         oname_reads: "{outdir}/reads.stat.tsv"
         oname_intensity: "{outdir}/{method}.tsv"
-        script_dir: *SCRIPTS
-        scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
+        scripts_vstackfiles: "python ~/scripts_ydx/vstack_files.py"
         scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
       
       params:
         blank:
-          - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads} "
+          - "{scripts_vstackfiles} {intensities} {projects} {oname_reads} "
           - "&& {scripts_normalize} {method} {oname_reads} {oname_intensity} project "
 

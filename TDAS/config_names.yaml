@@ -1,4 +1,5 @@
 rnaseq: rnaseq.yaml
+rnaseq_featurecounts: rnaseq_featureCounts.yaml
 rnaseq_repeats: rnaseq_repeats.yaml
 chipseq: chipseq.yaml
 blank: blank.yaml
