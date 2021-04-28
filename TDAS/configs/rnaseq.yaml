@@ -131,8 +131,8 @@ DEFAULT:
         obw: "{outdir}/{project}.bw"
       params:
         blank:
-          - "samtools index -b -@ 10 {ibam}  {ibam}.bai \n"
-          - "bamCoverage --samFlagExclude 12 --normalizeUsing  RPKM -b {ibam} -o {obw} -p 10  \n"
+          - "samtools index -b -@ 10 {ibam}  {ibam}.bai "
+          - "&& bamCoverage --samFlagExclude 12 --normalizeUsing  RPKM -b {ibam} -o {obw} -p 10 "
       outparams:
         obw: "{obw}"
 
@@ -182,7 +182,7 @@ DEFAULT:
         script: "{script_dir}/gtf_to_table.py"
       params:
         blank:
-          - "python {script} -l 1000 -o {oname}"
+          - "python {script} {igtf} -l 1000 -o {oname}"
       outparams:
         oname: "{oname}"
 
@@ -268,7 +268,7 @@ DEFAULT:
         "python" : "{script}"
         "-s": "{star}"
         "-r": "{readDistribute}"
-        "-p": "{project}"
+        "-p": "{projects}"
         "-o": "{oname}"
       outparams:
         oname: "oname"
@@ -283,18 +283,24 @@ DEFAULT:
           - stringtie_format
           - oname
           - ","
+        intensities_gene:
+          - stringtie
+          - ocount
+          - ","
         projects:
           - raw
           - project
           - ","
       variables:
         script_dir: *SCRIPTS
-        scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
-        oname: "{outdir}/stringtie.exp.stat.tsv"
+        scripts_vstackfiles: "{script_dir}/tableStack.py vstack "
+        oname: "{outdir}/stringtie.transcript.exp.stat.tsv"
+        oname_gene: "{outdir}/stringtie.gene.exp.stat.tsv"
 
       params:
         blank:
-          - "python {scripts_vstackfiles} -t {intensities} -p {projects} -o {oname} "
+          - "python {scripts_vstackfiles} -t {intensities} -p {projects} -o {oname} --comment nome --header 0"
+          - "&& python {scripts_vstackfiles} -t {intensities_gene} -p {projects} -o {oname_gene} --comment nome --header 0"
 
 
     normalize_expression:
@@ -312,14 +318,16 @@ DEFAULT:
           - ","
       variables:
         method: "FPKM"
-        oname_reads: "{outdir}/reads.stat.tsv"
-        oname_intensity: "{outdir}/{method}.tsv"
+        oname_reads_raw: "{outdir}/featurecounts.reads.raw.tsv"
+        oname_reads: "{outdir}/feacounts.reads.stat.tsv"
+        oname_intensity: "{outdir}/featurecounts.gene.{method}.tsv"
         script_dir: *SCRIPTS
         scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
         scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
       
       params:
         blank:
-          - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads} "
-          - "&& {scripts_normalize} {method} {oname_reads} {oname_intensity} project "
+          - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads_raw} "
+          - "&& {scripts_normalize} {method} {oname_reads_raw} {oname_intensity} project "
+          - "&& cat {oname_reads_raw} | cut -f 1,6-8 > {oname_reads} "
 
