@@ -24,7 +24,7 @@ DEFAULT:
   data_name: data.yaml
   order:
     - fastqc
-    - trim
+    - trim_pe
     - bowtie2
     - to_bam
     - sort_and_markdup
@@ -61,35 +61,38 @@ DEFAULT:
       outparams:
         outdir: "{outdir}"
    
-    trim:
+    trim_pe:
       path: trim_galore
       check_paths: []
       cmd_part: '1'
       father:
-        iseq1:
-        - raw
-        - seq1
-        iseq2:
-        - raw
-        - seq2
+      iseq1:
+      - get_fq
+      - seq1
+      iseq2:
+      - get_fq
+      - seq2
       need: true
       outdir: 1.trimed
       variables:
-        log: "{outdir}/{project}.{part}.log"
+      log: "{outdir}/{project}.{part}.log"
       outparams:
-        example: '{project}/hello'
+      oseq1: "{outdir}/{project}_val_1.fq.gz"
+      oseq2: "{outdir}/{project}_val_2.fq.gz"
+      example: '{project}/hello'
       params:
-        ' ': '{iseq1}  {iseq2}'
-        --fastqc: ''
-        --fastqc_args: '"--threads 8 "'
-        --length: '20'
-        --paired: ''
-        --quality: '20'
-        -o: '{outdir}'
-        --cores: 2
-        blank:
-          - "| tee {log} 2>&1 "
-      
+      ' ': '{iseq1}  {iseq2}'
+      --fastqc: ''
+      --fastqc_args: '"--threads 8 "'
+      --length: '20'
+      --paired: ''
+      --quality: '20'
+      -o: '{outdir}'
+      --cores: 2
+      --basename: "{project}"
+      blank:
+      - "2>&1 | tee {log}"
+
 
     bowtie2:
       need: true
@@ -97,10 +100,10 @@ DEFAULT:
       path: bowtie2
       father: 
         iseq1:
-          - trim
+          - trim_pe
           - oseq1
         iseq2:
-          - trim
+          - trim_pe
           - oseq2
       variables:
         olog: "{outdir}/{project}.mapping.log"
