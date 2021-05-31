@@ -18,9 +18,9 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chpseq.cmd.txt
+  cmd_name: chiseq.15wf.cmd.txt
   log_name: log
-  outdir : chipseqout
+  outdir : 1.15wf
   data_name: data.yaml
   order:
     - fastqc
@@ -31,6 +31,7 @@ DEFAULT:
     - peakcalling14
     - peakcalling2
     - toBwfrompeakcalling
+    - bwfc
     - ceas
     - frip_cal
     - bw_summary
@@ -38,6 +39,7 @@ DEFAULT:
   
   order_stat: 
     - stat_log
+    - stat_echo
 
   
   workflow:
@@ -66,33 +68,32 @@ DEFAULT:
       check_paths: []
       cmd_part: '1'
       father:
-      iseq1:
-      - get_fq
-      - seq1
-      iseq2:
-      - get_fq
-      - seq2
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
       need: true
       outdir: 1.trimed
       variables:
-      log: "{outdir}/{project}.{part}.log"
+        log: "{outdir}/{project}.{part}.log"
       outparams:
-      oseq1: "{outdir}/{project}_val_1.fq.gz"
-      oseq2: "{outdir}/{project}_val_2.fq.gz"
-      example: '{project}/hello'
+        oseq1: "{outdir}/{project}_val_1.fq.gz"
+        oseq2: "{outdir}/{project}_val_2.fq.gz"
+        example: '{project}/hello'
       params:
-      ' ': '{iseq1}  {iseq2}'
-      --fastqc: ''
-      --fastqc_args: '"--threads 8 "'
-      --length: '20'
-      --paired: ''
-      --quality: '20'
-      -o: '{outdir}'
-      --cores: 2
-      --basename: "{project}"
-      blank:
-      - "2>&1 | tee {log}"
-
+        ' ': '{iseq1}  {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --paired: ''
+        --quality: '20'
+        -o: '{outdir}'
+        --cores: 2
+        --basename: "{project}"
+        blank:
+          - "| tee {log} 2>&1 "    
 
     bowtie2:
       need: true
@@ -231,7 +232,7 @@ DEFAULT:
     toBwfrompeakcalling:
       need: true
       path: " "
-      outdir: "6.Bw"
+      outdir: "5.peakcalling/{project}"
       cmd_part: 2
       father:
         ibdg: 
@@ -243,15 +244,36 @@ DEFAULT:
         chromSize: "{db}/hg38_main.chrom.sizes"
       params:
         blank: 
-          - "sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b"  > {ibdg}.tmp "
+          - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
-          - "&& rm -f  {ibdg}.tmp "
+          - "&& rm -f  {ibdg}.tmp &"
+      outparams:
+        obw: "{obw}"
+
+    bwfc:
+      need: true 
+      path: " "
+      outdir: "6.Bw"
+      cmd_part: 2
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_fc.sh"
+        db: *DB
+        chromSize: "{db}/hg38_main.chrom.sizes"
+        obw: "{outdir}/{project}.fc.bw"
+      params:
+        blank:
+          - "bash {script} {ibw} {chromSize} {obw}"
       outparams:
         obw: "{obw}"
 
     
     ceas:
-      need: true 
+      need: true
       path: ceasBW
       outdir: "7.ceas"
       cmd_part: 2
@@ -270,7 +292,7 @@ DEFAULT:
       functions:
         - "mkdirs('{outdir}/{project}')"
       params:
-        -g: "{db}/hg38.sqlite3"
+        -g: "{db}/hg38.refGene.main.sqlite3"
         -l: "{chromsize}"
         --dump: " "
         --bg: " "
@@ -302,7 +324,7 @@ DEFAULT:
         oname: "{outdir}/{project}.{part}.stat"
       params:
         blank:
-          - "python {script} {ipeaks} {ibam} {oname}"
+          - "python {script} {ipeaks} {ibam} {oname} &" 
       outparams:
         oname: "{oname}"
     
@@ -349,6 +371,10 @@ DEFAULT:
         -b: "{bed}"
         -w: "{ibw}"
         -n: "100"
+        "-5": 2000
+        "-3": 2000
+        "--5bins": 100
+        "--3bins" : 100
         -o: "{oname}"
         blank: 
           - " &"
@@ -391,6 +417,33 @@ DEFAULT:
         "-o": "{oname}"
       outparams:
         oname: "oname"
+
+    stat_echo:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      variables:
+        oname: "{outdir}/datainfo.csv"
+      iparams_list:
+        bam: 
+          - sort_and_markdup
+          - obam
+          - ","
+        peak:
+          - peakcalling14
+          - opeaks
+          - ","
+        bw:
+          - bwfc
+          - obw
+          - ","
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& echo bam,{bam} >> {oname}"
+          - "&& echo bw,{bw} >> {oname}"
+          - "&& echo peak,{peak} >> {oname}"
+        
     
 
 

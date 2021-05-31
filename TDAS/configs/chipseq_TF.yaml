@@ -31,6 +31,7 @@ DEFAULT:
     - sort_and_markdup
     - peakcalling2
     - toBwfrompeakcalling
+    - bwfc
     - ceas
     - frip_cal
     - bw_summary
@@ -241,7 +242,7 @@ DEFAULT:
         -t: "{ibam}"
         blank:
           - "2>&1 | tee {olog} "
-          - "&& cat {opeaks} | cut -f 1-5 > {opeakbed} &"
+          - "&& cat {opeaks} | cut -f 1-4,7 > {opeakbed} &"
     
       outparams:
         opeaks: "{outdir}/{project}_peaks.narrowPeak"
@@ -271,7 +272,28 @@ DEFAULT:
       outparams:
         obw: "{obw}"
 
-    
+    bwfc:
+      need: true 
+      path: " "
+      outdir: "3.Bw"
+      cmd_part: 2
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_fc.sh"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+        obw: "{outdir}/{project}.fc.bw"
+      params:
+        blank:
+          - "bash {script} {ibw} {chromSize} {obw}"
+      outparams:
+        obw: "{obw}"
+
+
     ceas:
       need: true 
       path: ceasBW
@@ -292,7 +314,7 @@ DEFAULT:
       functions:
         - "mkdirs('{outdir}/{project}')"
       params:
-        -g: "{db}/mm10.sqlite3"
+        -g: "{db}/mm10.refGene.sqlite3"
         -l: "{chromsize}"
         --dump: " "
         --bg: " "
@@ -336,7 +358,7 @@ DEFAULT:
       outdir: "8.bw_summary"
       father:
         ibw:
-          - toBwfrompeakcalling
+          - bwfc
           - obw
       variables:
         scripts_dir: *SCRIPTS
@@ -357,7 +379,7 @@ DEFAULT:
       outdir: "9.metegene"
       father:
         ibw:
-          - toBwfrompeakcalling
+          - bwfc
           - obw
       variables:
         scripts_dir: *SCRIPTS
