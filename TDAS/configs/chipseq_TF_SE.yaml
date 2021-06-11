@@ -6,7 +6,6 @@ seq_info_format:
 - " "
 - project
 - seq1
-- seq2
 #- seq_order
 #- config_id
 seq_order:
@@ -25,7 +24,7 @@ DEFAULT:
   order:
     - get_fq
     - fastqc
-    - trim_pe
+    - trim_se
     - bowtie2
     - to_bam
     - sort_and_markdup
@@ -50,19 +49,13 @@ DEFAULT:
         iseq1:
           - raw
           - seq1
-        iseq2:
-          - raw
-          - seq2
       variables:
-        oseq1: "{outdir}/{project}.R1.fq.gz"
-        oseq2: "{outdir}/{project}.R2.fq.gz"
+        oseq1: "{outdir}/{project}.SE.fq.gz"
       params:
         blank:
           - "echo {iseq1} | tr , ' ' |xargs cat > {oseq1}"
-          - "&& echo {iseq2} | tr , ' ' |xargs cat > {oseq2}"
       outparams:
         seq1: "{oseq1}"
-        seq2: "{oseq2}"
           
     fastqc:
       need: false
@@ -72,18 +65,40 @@ DEFAULT:
         iseq1:
           - get_fq
           - seq1
-        iseq2:
-          - get_fq
-          - seq2
       params:
         -t: 10
         -o: "{outdir}"
         blank: 
           - "{iseq1}"
-          - "{iseq2}"
       outparams:
         outdir: "{outdir}"
-   
+
+    trim_se:
+      need: true
+      path: trim_galore
+      outdir: 1.trimed
+      check_paths: []
+      cmd_part: "1"
+      father:
+        iseq:
+          - get_fq
+          - seq1 
+      variables:
+        log: "{outdir}/{project}.{part}.log"
+      outparams:
+        oseq1: "{outdir}/{project}_trimmed.fq(.gz)"
+      params:
+        ' ': '{iseq1} '
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --quality: '20'
+        -o: '{outdir}'
+        --cores: 2
+        --basename: "{project}"
+        blank:
+          - "| tee {log} 2>&1 "
+
     trim_pe:
       path: trim_galore
       check_paths: []
@@ -125,9 +140,6 @@ DEFAULT:
         iseq1:
           - trim_pe
           - oseq1
-        iseq2:
-          - trim_pe
-          - oseq2
       variables:
         olog: "{outdir}/{project}.mapping.log"
         osam: "{outdir}/{project}.sam"
@@ -138,8 +150,7 @@ DEFAULT:
         --no-discordant: " "
         --threads: 10
         -q: " "
-        "-1": "{iseq1}"
-        "-2": "{iseq2}" 
+        -x: "{iseq1}"
         -S: "{osam}"
         blank:
           - "2>&1 | tee {olog} "
@@ -231,7 +242,7 @@ DEFAULT:
         opeaks: "{outdir}/{project}_peaks.narrowPeak"
         opeakbed: "{outdir}/{project}_peaks.bed"
       params:
-        -f: BAMPE
+        -f: BAM
         --SPMR: " "
         -g: mm
         -B: " "
