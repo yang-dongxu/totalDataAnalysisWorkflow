@@ -243,7 +243,6 @@ DEFAULT:
         blank:
           - "2>&1 | tee {olog} "
           - "&& cat {opeaks} | cut -f 1-4,7 > {opeakbed} &"
-    
       outparams:
         opeaks: "{outdir}/{project}_peaks.narrowPeak"
         opeakbed: "{opeakbed}"
@@ -266,9 +265,9 @@ DEFAULT:
         chromSize: "{db}/mm10_main.chrom.sizes"
       params:
         blank: 
-          - "sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b"  > {ibdg}.tmp "
+          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b"  > {ibdg}.tmp '
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
-          - "&& rm -f  {ibdg}.tmp "
+          - "&& rm -f  {ibdg}.tmp &"
       outparams:
         obw: "{obw}"
 
