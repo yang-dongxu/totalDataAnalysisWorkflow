@@ -86,9 +86,9 @@ DEFAULT:
       variables:
         log: "{outdir}/{project}.{part}.log"
       outparams:
-        oseq1: "{outdir}/{project}_trimmed.fq(.gz)"
+        oseq1: "{outdir}/{project}_trimmed.fq.gz"
       params:
-        ' ': '{iseq1} '
+        ' ': '{iseq} '
         --fastqc: ''
         --fastqc_args: '"--threads 8 "'
         --length: '20'
@@ -97,7 +97,7 @@ DEFAULT:
         --cores: 2
         --basename: "{project}"
         blank:
-          - "| tee {log} 2>&1 "
+          - " 2>&1  | tee {log} "
 
     trim_pe:
       path: trim_galore
@@ -129,7 +129,7 @@ DEFAULT:
         --cores: 2
         --basename: "{project}"
         blank:
-          - "| tee {log} 2>&1 "
+          - " 2>&1  | tee {log}"
       
 
     bowtie2:
@@ -138,7 +138,7 @@ DEFAULT:
       path: bowtie2
       father: 
         iseq1:
-          - trim_pe
+          - trim_se
           - oseq1
       variables:
         olog: "{outdir}/{project}.mapping.log"
@@ -150,7 +150,7 @@ DEFAULT:
         --no-discordant: " "
         --threads: 10
         -q: " "
-        -x: "{iseq1}"
+        -U: "{iseq1}"
         -S: "{osam}"
         blank:
           - "2>&1 | tee {olog} "
@@ -170,8 +170,7 @@ DEFAULT:
         obam: "{outdir}/{project}.bam"
       params:
         --threads: 12
-        -f: "0x2" #filter out reads un-paired and can't mapping to genome
-        #-q: 10 ## for repeats, turn this off, becaust their poor mapq
+        -q: 30 ## for repeats, turn this off, becaust their poor mapq
         -o: "{obam}"
         " ": "{isam}"
       
@@ -265,7 +264,7 @@ DEFAULT:
     toBwfrompeakcalling:
       need: true
       path: " "
-      outdir: "6.BW"
+      outdir: "2.peakcalling/{project}"
       cmd_part: 2
       father:
         ibdg: 
@@ -286,7 +285,7 @@ DEFAULT:
     bwfc:
       need: true 
       path: " "
-      outdir: "3.Bw"
+      outdir: "6.Bw"
       cmd_part: 2
       father:
         ibw:

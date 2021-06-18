@@ -88,10 +88,12 @@ class Block:
             new_value=str.format_map(value,self.values)
             Intermedia.add_term(self.name,self.project,item,new_value)
         return 0
+
     def process_functions_last(self):
         for func in self.functions_last:
             exec(str.format_map(func,self.values))
         return 0
+
     def process_checkpath(self):
         for item in self.check_paths:
             path=str.format_map(item,self.values)

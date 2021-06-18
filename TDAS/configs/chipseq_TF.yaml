@@ -114,7 +114,7 @@ DEFAULT:
         --cores: 2
         --basename: "{project}"
         blank:
-          - "| tee {log} 2>&1 "
+          - " 2>&1 | tee {log} "
       
 
     bowtie2:
@@ -160,7 +160,7 @@ DEFAULT:
       params:
         --threads: 12
         -f: "0x2" #filter out reads un-paired and can't mapping to genome
-        #-q: 10 ## for repeats, turn this off, becaust their poor mapq
+        -q: 30 ## for repeats, turn this off, becaust their poor mapq
         -o: "{obam}"
         " ": "{isam}"
       

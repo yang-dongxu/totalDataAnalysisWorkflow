@@ -23,7 +23,7 @@ DEFAULT:
   log_name: log
   data_name: data.yaml
   order:
-    - trim
+    - trim_pe
     - STAR
     - read_distribute
     - toBwfrombam
@@ -38,6 +38,38 @@ DEFAULT:
   outdir: rnaseqout
 
   workflow:
+
+    trim_pe:
+      path: trim_galore
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - raw
+        - seq1
+        iseq2:
+        - raw
+        - seq2
+      need: false
+      outdir: 1.trimed
+      variables:
+        log: "{outdir}/{project}.{part}.log"
+      outparams:
+        oseq1: "{outdir}/{project}_val_1.fq.gz"
+        oseq2: "{outdir}/{project}_val_2.fq.gz"
+        example: '{project}/hello'
+      params:
+        ' ': '{iseq1}  {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --paired: ''
+        --quality: '20'
+        -o: '{outdir}'
+        --cores: 2
+        --basename: "{project}"
+        blank:
+          - " 2>&1 | tee {log}  "
     trim:
       check_paths: []
       cmd_part: '1'
@@ -72,10 +104,10 @@ DEFAULT:
       cmd_part: '1'
       father:
         iseq1:
-        - trim
+        - trim_pe
         - oseq1
         iseq2:
-        - trim
+        - trim_pe
         - oseq2
       variables:
         outprefix: "{outdir}/{project}_"
