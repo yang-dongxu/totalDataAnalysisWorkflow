@@ -28,6 +28,7 @@ DEFAULT:
     - bowtie2
     - to_bam
     - sort_and_markdup
+    - to_fragment
     - peakcalling14
     - peakcalling2
     - toBwfrompeakcalling
@@ -168,6 +169,24 @@ DEFAULT:
       
       outparams:
         obam: "{cleanbam}"
+
+    to_fragment:
+      need: true
+      path: " "
+      outdir: 4.cleanBam
+      father:
+        ibam:
+          - sort_and_markdup
+          - obam 
+      variables:
+        obed: "{outdir}/{project}.fragment.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bamtobedpe.sh"
+      params:
+        blank:
+          - "bash {script} {ibam} 8 | sort -k1,1 -k2,2n > {obed}"
+      outparams:
+        obed: "{obed}"
 
     peakcalling14:
       need: true 
@@ -437,12 +456,17 @@ DEFAULT:
           - bwfc
           - obw
           - ","
+        fragments:
+          - to_fragment
+          - obed
+          - ","
       params:
         blank:
           - "echo '' > {oname} "
           - "&& echo bam,{bam} >> {oname}"
           - "&& echo bw,{bw} >> {oname}"
           - "&& echo peak,{peak} >> {oname}"
+          - "&& echo fragment,{fragments} >> {oname}"
         
     
 
