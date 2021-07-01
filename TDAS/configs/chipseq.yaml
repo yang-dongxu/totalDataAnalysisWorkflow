@@ -18,16 +18,16 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chiseq.15wf.cmd.txt
+  cmd_name: chiseq.cmd.txt
   log_name: log
-  outdir : 1.15wf
+  outdir : dataset
   data_name: data.yaml
   order:
     - fastqc
     - trim_pe
     - bowtie2
-    - to_bam
     - sort_and_markdup
+    - to_fragment
     - peakcalling14
     - peakcalling2
     - toBwfrompeakcalling
@@ -93,12 +93,12 @@ DEFAULT:
         --cores: 2
         --basename: "{project}"
         blank:
-          - "| tee {log} 2>&1 "    
+          - " 2>&1 | tee {log} "    
 
     bowtie2:
       need: true
       outdir: 2.mapping
-      path: bowtie2
+      path: ""
       father: 
         iseq1:
           - trim_pe
@@ -109,49 +109,26 @@ DEFAULT:
       variables:
         olog: "{outdir}/{project}.mapping.log"
         osam: "{outdir}/{project}.sam"
+        obam: "{outdir}/{project}.bam"
+        threads: 10
         db: *DB
       params:
-        -q: " "
-        -x: "{db}/hg38_main"
-        --no-discordant: " "
-        --threads: 10
-        -q: " "
-        "-1": "{iseq1}"
-        "-2": "{iseq2}" 
-        -S: "{osam}"
         blank:
-          - "2>&1 | tee {olog} "
+          - "bowtie2 -q -x {db}/hg38_main --no-discordant --threads {threads} -1 {iseq1} -2 {iseq2} -S {osam} 2>&1 | tee {olog} "
+          - " && samtools view --threads {threads} -f 0x2 -q 30 -o {obam} {osam} "
+          - " && rm {osam} "
       outparams:
         osam: "{osam}"
-        olog: "{olog}"
-      
-    to_bam:
-      need: true
-      path: "samtools view"
-      outdir: 3.Bam
-      father: 
-        isam:
-          - bowtie2
-          - osam
-      variables:
-        obam: "{outdir}/{project}.bam"
-      params:
-        --threads: 12
-        -f: "0x2" #filter out reads un-paired and can't mapping to genome
-        #-q: 10 ## for repeats, turn this off, becaust their poor mapq
-        -o: "{obam}"
-        " ": "{isam}"
-      
-      outparams:
         obam: "{obam}"
-    
+        olog: "{olog}"
+          
     sort_and_markdup: 
       need: true
       path: " "
-      outdir: 4.cleanBam
+      outdir: 3.cleanBam
       father:
         ibam:
-          - to_bam
+          - bowtie2
           - obam
       variables:
         sort_bam: "{outdir}/{project}.sort"
@@ -169,10 +146,28 @@ DEFAULT:
       outparams:
         obam: "{cleanbam}"
 
+    to_fragment:
+      need: true
+      path: " "
+      outdir: 3.cleanBam
+      father:
+        ibam:
+          - sort_and_markdup
+          - obam 
+      variables:
+        obed: "{outdir}/{project}.fragment.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bamtobedpe.sh"
+      params:
+        blank:
+          - "bash {script} {ibam} 8 | sort -k1,1 -k2,2n > {obed}"
+      outparams:
+        obed: "{obed}"
+
     peakcalling14:
       need: true 
       path: "macs14 "
-      outdir: "5.peakcalling/{project}"
+      outdir: "4.peakcalling/{project}"
       father:
         ibam:
           - sort_and_markdup
@@ -200,7 +195,7 @@ DEFAULT:
     peakcalling2:
       need: true
       path: "macs2 callpeak"
-      outdir: 5.peakcalling
+      outdir: 4.peakcalling
       father:
         ibam:
           - sort_and_markdup
@@ -232,7 +227,7 @@ DEFAULT:
     toBwfrompeakcalling:
       need: true
       path: " "
-      outdir: "5.peakcalling/{project}"
+      outdir: "4.peakcalling/{project}"
       cmd_part: 2
       father:
         ibdg: 
@@ -253,7 +248,7 @@ DEFAULT:
     bwfc:
       need: true 
       path: " "
-      outdir: "6.Bw"
+      outdir: "5.Bw"
       cmd_part: 2
       father:
         ibw:
@@ -275,7 +270,7 @@ DEFAULT:
     ceas:
       need: true
       path: ceasBW
-      outdir: "7.ceas"
+      outdir: 6.ceas
       cmd_part: 2
       father:
         ibw:
@@ -310,7 +305,7 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: "5.peakcalling/{project}"
+      outdir: "4.peakcalling/{project}"
       father: 
         ipeaks:
           - peakcalling14
@@ -333,7 +328,7 @@ DEFAULT:
       need: true 
       cmd_part: 3
       path: ""
-      outdir: "8.bw_summary"
+      outdir: "7.bw_summary"
       father:
         ibw:
           - toBwfrompeakcalling
@@ -354,7 +349,7 @@ DEFAULT:
       need: true 
       cmd_part: 3
       path: " "
-      outdir: "9.metegene"
+      outdir: "8.metegene"
       father:
         ibw:
           - toBwfrompeakcalling
@@ -437,12 +432,17 @@ DEFAULT:
           - bwfc
           - obw
           - ","
+        fragments:
+          - to_fragment
+          - obed
+          - ","
       params:
         blank:
           - "echo '' > {oname} "
           - "&& echo bam,{bam} >> {oname}"
           - "&& echo bw,{bw} >> {oname}"
           - "&& echo peak,{peak} >> {oname}"
+          - "&& echo fragment,{fragments} >> {oname}"
         
     
 
