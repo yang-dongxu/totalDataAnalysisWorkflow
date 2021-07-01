@@ -30,11 +30,12 @@ DEFAULT:
     - stringtie
     - stringtie_format
     - featureCounts
-    - set_featureCounts_out
+    - featureCounts_transcript
   order_stat: 
     - stat_log
-    - normalize_expression
     - combine_stringtie_out
+    - combine_featurecounts
+    - combine_featurecounts_transcript
   outdir: rnaseqout
 
   workflow:
@@ -221,7 +222,7 @@ DEFAULT:
     
     featureCounts:
       need: true
-      path: featureCounts
+      path: " "
       outdir: 5.counts
       check_paths: []
       cmd_part: '1'
@@ -236,43 +237,43 @@ DEFAULT:
         db: *DB
         gtf: "{db}/hg38.refGene.main.gtf"
         outputpath: '{outdir}/{project}'
-        oname: "{outputpath}/{project}_featurecounts"
+        oname: "{outputpath}/{project}_featurecounts.tsv"
         olog: "{outputpath}/{project}.{part}.log"
+        threads: 8
       outparams:
         oname: '{oname}'
       params:
-        ' ': '{ibam}'
-        --fracOverlap: '0.1'
-        --fraction: ' '
-        -B: ' '
-        -M: ' '
-        -O: ' '
-        -T: '10'
-        -a: "{gtf}"
-        -g: gene_id
-        -o: '{oname}'
-        -p: ' '
         blank:
-          - "2>&1 | tee {olog}"
+          - " featureCounts --fraction --fracOverlap 0.1 -B -M -O -T {threads} -a {gtf} -g gene_id -o {oname} 2>&1  {ibam} | tee {olog} " 
+          - " sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
 
-    
-    set_featureCounts_out:
-      need: true 
-      outdir: 5.counts
+    featureCounts:
+      need: true
       path: " "
-      variables: 
-        oname: "{outdir}/{project}/{project}.tsv"
+      outdir: 5.counts
+      check_paths: []
+      cmd_part: '1'
       father:
-        iname:
-          - featureCounts
-          - oname
+        ibam:
+        - STAR
+        - obam_sorted
+      functions:
+        - mkdirs("{outputpath}")
+
+      variables:
+        db: *DB
+        gtf: "{db}/hg38.refGene.main.gtf"
+        outputpath: '{outdir}/{project}'
+        oname: "{outputpath}/{project}_featurecounts.tsv"
+        olog: "{outputpath}/{project}.{part}.log"
+        threads: 8
+      outparams:
+        oname: '{oname}'
       params:
         blank:
-          - "cp {iname} {oname}"
-          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads' "      
-      outparams:
-        oname: "{oname}"
-      
+          - " featureCounts --fraction --fracOverlap 0.1 -B -M -O -T {threads} -a {gtf} -g transcript_id -o {oname} 2>&1  {ibam} | tee {olog} " 
+          - " sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
+
 
   stat:
     stat_log:
@@ -335,13 +336,13 @@ DEFAULT:
           - "&& python {scripts_vstackfiles} -t {intensities_gene} -p {projects} -o {oname_gene} --comment nome --header 0"
 
 
-    normalize_expression:
+    combine_featurecounts:
       need: true 
       path: ""
       outdir: "0.stat"
       iparams_list:
         intensities:
-          - set_featureCounts_out
+          - featureCounts
           - oname
           - ","
         projects:
@@ -361,5 +362,36 @@ DEFAULT:
         blank:
           - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads_raw} "
           - "&& {scripts_normalize} {method} {oname_reads_raw} {oname_intensity} project "
-          - "&& cat {oname_reads_raw} | cut -f 1,6-8 > {oname_reads} "
+          - "&& cat {oname_reads_raw} | cut -f 1,6-8 > {oname_reads}  "
+          - "&& rm {oname_reads_raw} "
+
+    combine_featurecounts_transcript:
+      need: true 
+      path: ""
+      outdir: "0.stat"
+      iparams_list:
+        intensities:
+          - featureCounts_transcript
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        method: "FPKM"
+        oname_reads_raw: "{outdir}/featurecounts.reads.raw.tsv"
+        oname_reads: "{outdir}/feacounts.reads.stat.tsv"
+        oname_intensity: "{outdir}/featurecounts.gene.{method}.tsv"
+        script_dir: *SCRIPTS
+        scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
+        scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads_raw} "
+          - "&& {scripts_normalize} {method} {oname_reads_raw} {oname_intensity} project "
+          - "&& cat {oname_reads_raw} | cut -f 1,6-8 > {oname_reads}  "
+          - "&& rm {oname_reads_raw} "
+
 
