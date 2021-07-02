@@ -436,13 +436,19 @@ DEFAULT:
           - to_fragment
           - obed
           - ","
+        project:
+          - raw
+          - project
+          - ","
       params:
         blank:
           - "echo '' > {oname} "
+          - "&& echo project.{project} >> {oname}"
           - "&& echo bam,{bam} >> {oname}"
           - "&& echo bw,{bw} >> {oname}"
           - "&& echo peak,{peak} >> {oname}"
           - "&& echo fragment,{fragments} >> {oname}"
+
         
     
 

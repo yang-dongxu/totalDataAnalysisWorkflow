@@ -69,7 +69,7 @@ DEFAULT:
         olog: "{outdir}/{project}.macs14.log"
       params:
         -f: BAM
-        -g: hs
+        -g: mm
         -p: 1e-5
         --keep-dup: 1
         -n: "{outdir}/{project}"
@@ -98,7 +98,7 @@ DEFAULT:
       params:
         -f: BAMPE
         --SPMR: " "
-        -g: hs
+        -g: mm
         -B: " "
         -q: 0.05
         --keep-dup: 1

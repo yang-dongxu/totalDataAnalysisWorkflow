@@ -245,9 +245,9 @@ DEFAULT:
       params:
         blank:
           - " featureCounts --fraction --fracOverlap 0.1 -B -M -O -T {threads} -a {gtf} -g gene_id -o {oname} 2>&1  {ibam} | tee {olog} " 
-          - " sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
+          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
 
-    featureCounts:
+    featureCounts_transcript:
       need: true
       path: " "
       outdir: 5.counts
@@ -272,7 +272,7 @@ DEFAULT:
       params:
         blank:
           - " featureCounts --fraction --fracOverlap 0.1 -B -M -O -T {threads} -a {gtf} -g transcript_id -o {oname} 2>&1  {ibam} | tee {olog} " 
-          - " sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
+          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
 
 
   stat:

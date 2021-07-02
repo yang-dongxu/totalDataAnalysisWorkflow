@@ -5,6 +5,7 @@ env_variables:
 seq_info_format:
 - ";"
 - project
+- idir
 - ibeds
 #- seq_order
 #- config_id
@@ -46,13 +47,16 @@ DEFAULT:
         ibeds:
           - raw
           - ibeds
+        idir:
+          - raw
+          - idir
       variables:
         obed: "{outdir}/{project}.bed"
         threads: 8
         
       params:
         blank:
-          - "echo {ibeds} | tr , ' ' | xargs cat  >  {obed} "
+          - "cd {idir} && echo {ibeds} | tr , ' ' | xargs cat  >  {obed} "
 
       outparams:
         obed: "{obed}"
@@ -70,7 +74,7 @@ DEFAULT:
         olog: "{outdir}/{project}.macs14.log"
       params:
         blank: 
-          - "-f BED -g hs -p 1e-5 --keep-dup 1 --nomedel --shiftsize 73 -n  {outdir}/{project} -t {ibed}  2>&1 | tee {olog} &"
+          - "-f BED -g mm -p 1e-5 --keep-dup 1 --nomodel --shiftsize 1 -n  {outdir}/{project} -t {ibed}  2>&1 | tee {olog} &" ##pairend, no need for shift
       outparams:
         opeaks: "{outdir}/{project}_peaks.bed"
         opeakbed: "{outdir}/{project}_peaks.bed"
@@ -93,7 +97,7 @@ DEFAULT:
         opeakbed: "{outdir}/{project}/{project}_peaks.bed"
       params:
         blank: 
-          - " -f BEDPE --SPMR -g hs -B -q 0.05 --keep-dup 1 --nomodel --exisize 147 -n {project} -outdir  {outdir}/{project} -t ibed "
+          - " -f BEDPE --SPMR -g mm -B -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project} --outdir  {outdir}/{project} -t {ibed} "
           - " 2>&1 | tee {olog} &"
       outparams:
         opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
@@ -165,14 +169,9 @@ DEFAULT:
       functions:
         - "mkdirs('{outdir}/{project}')"
       params:
-        -g: "{db}/mm10.refGene.sqlite3"
-        -l: "{chromsize}"
-        --dump: " "
-        --bg: " "
-        --bisizes: "{bisize}"
-        -w: "{ibw}"
-        -b: "{ibed}"
-        --name: "{oname}"
+        blank: 
+          - " -g {db}/mm10.refGene.sqlite3 -l {chromsize} --dump --bg --bisizes {bisize} -w {ibw} --name {oname} "
+          - " & "
       outparams:
         ogene: "{oname}_dump_gene.txt"
         oTSS: "{oname}_dump_TSS.txt"
@@ -190,7 +189,7 @@ DEFAULT:
           - opeakbed
         ibed:
           - merge
-          - obam
+          - obed
       variables:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/peak_stat.py"
