@@ -1,0 +1,286 @@
+env_variables:
+  - &DB "${{DB}}/mm10"
+  - &SCRIPTS "${{SCRIPTS}}"
+
+seq_info_format:
+- ";"
+- project
+- ibeds
+#- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids: 
+  - DEFAULT
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: chipseq_merge.cmd.txt
+  log_name: log
+  outdir : out
+  data_name: data.yaml
+  order:
+    - merge
+    - peakcalling14
+    - peakcalling2
+    - toBwfrompeakcalling
+    - bwfc
+    - ceas
+    - frip_cal
+    - bw_summary
+    - metagene
+  
+  order_stat: 
+    - stat_log
+
+  
+  workflow:
+
+    merge:
+      need: true 
+      path: ""
+      outdir: "1.merged"
+      father:
+        ibeds:
+          - raw
+          - ibeds
+      variables:
+        obed: "{outdir}/{project}.bed"
+        threads: 8
+        
+      params:
+        blank:
+          - "echo {ibeds} | tr , ' ' | xargs cat  >  {obed} "
+
+      outparams:
+        obed: "{obed}"
+
+    peakcalling14:
+      need: true 
+      path: "macs14 "
+      outdir: "2.peakcalling/{project}"
+      father:
+        ibed:
+          - merge
+          - obed
+      cmd_part: 2
+      variables:
+        olog: "{outdir}/{project}.macs14.log"
+      params:
+        blank: 
+          - "-f BED -g hs -p 1e-5 --keep-dup 1 --nomedel --shiftsize 73 -n  {outdir}/{project} -t {ibed}  2>&1 | tee {olog} &"
+      outparams:
+        opeaks: "{outdir}/{project}_peaks.bed"
+        opeakbed: "{outdir}/{project}_peaks.bed"
+        osummits: "{outdir}/{project}_summits.bed"
+        obdg: "{outdir}/{project}_treat_pileup.bdg"
+        olog: "{olog}"
+      
+    peakcalling2:
+      need: true
+      path: "macs2 callpeak"
+      outdir: 2.peakcalling
+      father:
+        ibed:
+          - merge
+          - obed
+      cmd_part: 2
+      variables:
+        olog: "{outdir}/{project}/{project}.macs2.log"
+        opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
+        opeakbed: "{outdir}/{project}/{project}_peaks.bed"
+      params:
+        blank: 
+          - " -f BEDPE --SPMR -g hs -B -q 0.05 --keep-dup 1 --nomodel --exisize 147 -n {project} -outdir  {outdir}/{project} -t ibed "
+          - " 2>&1 | tee {olog} &"
+      outparams:
+        opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
+        opeakbed: "{opeakbed}"
+        osummits: "{outdir}/{project}/{project}_summits.bed"
+        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        olog: "{olog}"
+    
+    toBwfrompeakcalling:
+      need: true
+      path: " "
+      outdir: "2.peakcalling/{project}"
+      cmd_part: 2
+      father:
+        ibdg: 
+          - peakcalling2
+          - obdg
+      variables:
+        obw: "{outdir}/{project}.bw"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+      params:
+        blank: 
+          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b"  > {ibdg}.tmp '
+          - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
+          - "&& rm -f  {ibdg}.tmp &"
+      outparams:
+        obw: "{obw}"
+
+    bwfc:
+      need: true 
+      path: " "
+      outdir: "3.Bw"
+      cmd_part: 2
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_fc.sh"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+        obw: "{outdir}/{project}.fc.bw"
+      params:
+        blank:
+          - "bash {script} {ibw} {chromSize} {obw}"
+      outparams:
+        obw: "{obw}"
+
+    
+    ceas:
+      need: true 
+      path: ceasBW
+      outdir: "4.ceas"
+      cmd_part: 2
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+        ibed: 
+          - peakcalling14
+          - opeakbed
+      variables:
+        oname: "{outdir}/{project}/{project}"
+        bisize: 2000
+        db: *DB
+        chromsize: "{db}/mm10_main.chrom.sizes"
+      functions:
+        - "mkdirs('{outdir}/{project}')"
+      params:
+        -g: "{db}/mm10.refGene.sqlite3"
+        -l: "{chromsize}"
+        --dump: " "
+        --bg: " "
+        --bisizes: "{bisize}"
+        -w: "{ibw}"
+        -b: "{ibed}"
+        --name: "{oname}"
+      outparams:
+        ogene: "{oname}_dump_gene.txt"
+        oTSS: "{oname}_dump_TSS.txt"
+        oTTS: "{oname}_dump_TTS.txt"
+        opdf: "{oname}.pdf"
+
+    frip_cal:
+      need: true
+      cmd_part: 2
+      path: " "
+      outdir: "2.peakcalling/{project}"
+      father: 
+        ipeaks:
+          - peakcalling14
+          - opeakbed
+        ibed:
+          - merge
+          - obam
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/peak_stat.py"
+        oname: "{outdir}/{project}.{part}.stat"
+      params:
+        blank:
+          - "python {script} {ipeaks} {ibed} {oname}"
+      outparams:
+        oname: "{oname}"
+    
+
+    bw_summary:
+      need: true 
+      cmd_part: 3
+      path: ""
+      outdir: "5.bw_summary"
+      father:
+        ibw:
+          - bwfc
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_summary_bed.py"
+        db: *DB
+        bed: "{db}/mm10.refGene.main.promoter_2k.bed"
+        osummary: "{outdir}/{project}.summary"
+      params:
+        blank:
+          - "python {script} {bed} {ibw} {osummary} &"
+      outparams:
+        osummary: "{osummary}"
+      
+    metagene:
+      need: true 
+      cmd_part: 3
+      path: " "
+      outdir: "6.metegene"
+      father:
+        ibw:
+          - bwfc
+          - obw
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_summary_bed_bins.py"
+        db: *DB
+        bed: "{db}/mm10.refGene.main.bed"
+        oname: "{outdir}/{project}.tsv"
+
+      params:
+        "python ": "{script}"
+        -b: "{bed}"
+        -w: "{ibw}"
+        -n: "100"
+        -o: "{oname}"
+        blank: 
+          - " &"
+      outparams:
+        oname: "{oname}"
+
+    
+  stat: 
+    stat_log:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        macs:
+          - peakcalling2
+          - olog
+          - ","
+        peaks:
+          - frip_cal
+          - oname 
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        script_dir: *SCRIPTS
+        script: "{script_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.stats"
+      params:
+        "python" : "{script}"
+        "-m": "{macs}"
+        "-l": "{peaks}"
+        "-p": "{projects}"
+        "-o": "{oname}"
+      outparams:
+        oname: "oname"
+    
+
+
