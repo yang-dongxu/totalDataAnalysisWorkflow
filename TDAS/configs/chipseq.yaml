@@ -443,7 +443,7 @@ DEFAULT:
       params:
         blank:
           - "echo '' > {oname} "
-          - "&& echo project.{project} >> {oname}"
+          - "&& echo project,{project} >> {oname}"
           - "&& echo bam,{bam} >> {oname}"
           - "&& echo bw,{bw} >> {oname}"
           - "&& echo peak,{peak} >> {oname}"

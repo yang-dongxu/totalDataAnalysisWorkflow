@@ -35,6 +35,7 @@ DEFAULT:
   
   order_stat: 
     - stat_log
+    - stat_echo
 
   
   workflow:
@@ -280,6 +281,40 @@ DEFAULT:
         "-o": "{oname}"
       outparams:
         oname: "oname"
+
+    stat_echo:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      variables:
+        oname: "{outdir}/datainfo.csv"
+      iparams_list:
+        bed: 
+          - merge
+          - obed
+          - ","
+        peak:
+          - peakcalling14
+          - opeaks
+          - ","
+        bw:
+          - bwfc
+          - obw
+          - ","
+        project:
+          - raw
+          - project
+          - ","
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& echo project,{project} >> {oname}"
+          - "&& echo bed,{bed} >> {oname}"
+          - "&& echo bw,{bw} >> {oname}"
+          - "&& echo peak,{peak} >> {oname}"
+
+
+        
     
 
 
