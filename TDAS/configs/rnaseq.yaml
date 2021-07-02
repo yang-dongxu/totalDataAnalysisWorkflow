@@ -264,7 +264,7 @@ DEFAULT:
         db: *DB
         gtf: "{db}/hg38.refGene.main.gtf"
         outputpath: '{outdir}/{project}'
-        oname: "{outputpath}/{project}_featurecounts.tsv"
+        oname: "{outputpath}/{project}_featurecounts.transcript.tsv"
         olog: "{outputpath}/{project}.{part}.log"
         threads: 8
       outparams:
@@ -356,7 +356,7 @@ DEFAULT:
         oname_intensity: "{outdir}/featurecounts.gene.{method}.tsv"
         script_dir: *SCRIPTS
         scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
-        scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
+        scripts_normalize: "python {script_dir}/normaliseRNA_featureCounts.py"
       
       params:
         blank:
@@ -381,11 +381,11 @@ DEFAULT:
       variables:
         method: "FPKM"
         oname_reads_raw: "{outdir}/featurecounts.reads.raw.tsv"
-        oname_reads: "{outdir}/feacounts.reads.stat.tsv"
+        oname_reads: "{outdir}/feacounts.transcript.reads.stat.tsv"
         oname_intensity: "{outdir}/featurecounts.gene.{method}.tsv"
         script_dir: *SCRIPTS
         scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
-        scripts_normalize: "python ~/scripts_ydx/normaliseRNA_featureCounts.py"
+        scripts_normalize: "python {script_dir}/normaliseRNA_featureCounts.py"
       
       params:
         blank:
