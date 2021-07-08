@@ -216,10 +216,12 @@ DEFAULT:
       variables:
         oname: "{outdir}/{project}.transcript.expression.tsv"
         script_path: *SCRIPTS
-        homer_normalize: "{script_path}/normalize_homer_counts.sh"
+        homer_normalize: "{script_path}/normalize_homer_counts_v2.py"
+        db: *DB
+        annotation: "{db}/hg38.repeats.main.transcript.bed "
       params:
         blank:
-          - "wait && bash {homer_normalize}  {icount} > {oname}"
+          - "wait && python {homer_normalize} insertion  {icount} {annotation} > {oname}"
       outparams:
         oname: "{oname}"
 
@@ -235,10 +237,12 @@ DEFAULT:
       variables:
         oname: "{outdir}/{project}.subfamily.expression.tsv"
         script_path: *SCRIPTS
-        homer_normalize: "{script_path}/normalize_homer_counts.sh"
+        homer_normalize: "{script_path}/normalize_homer_counts_v2.py"
+        db: *DB
+        annotation: "{db}/hg38.repeats.main.transcript.bed "
       params:
         blank:
-          - "bash {homer_normalize} {icount} > {oname}"
+          - "python {homer_normalize} subfamily {icount} > {oname}"
       outparams:
         oname: "{oname}"
       

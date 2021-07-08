@@ -123,7 +123,8 @@ class Block:
 
                 logging.info(f"paths need to check for overwrite: {ochecks}")
             ochecks=[f" -e {i} " for i in ochecks]
-            ocmd=f''' if [[ ! ({' || '.join(ochecks)}) ]]; then {cmd}; fi '''
+            if len(ochecks):
+                ocmd=f''' if [[ ! ({' || '.join(ochecks)}) ]]; then {cmd}; fi '''
             return ocmd
 
         if  not overwrite_opt:
