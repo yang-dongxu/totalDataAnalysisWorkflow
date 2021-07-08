@@ -4,8 +4,9 @@ env_variables:
 
 
 seq_info_format:
-- ','
+- ';'
 - project
+- idir
 - seq1
 - seq2
 #- seq_order
@@ -23,6 +24,7 @@ DEFAULT:
   log_name: log
   data_name: data.yaml
   order:
+    - get_fq
     - trim_pe
     - STAR
     - read_distribute
@@ -40,18 +42,44 @@ DEFAULT:
 
   workflow:
 
+    get_fq:
+      need: true
+      cmd_part: "1"
+      outdir: "1.raw_data"
+      father:
+        idir:
+          - raw
+          - idir
+        seq1:
+          - raw
+          - seq1
+        seq2:
+          - raw
+          - seq2
+      variables:
+        oseq1: "{outdir}/{project}.R1.fq.gz"
+        oseq2: "{outdir}/{project}.R2.fq.gz"
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
+          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+
     trim_pe:
-      path: trim_galore
+      path: " "
       check_paths: []
       cmd_part: '1'
       father:
         iseq1:
-        - raw
-        - seq1
+        - get_fq
+        - oseq1
         iseq2:
-        - raw
-        - seq2
-      need: false
+        - get_fq
+        - oseq2
+      need: true
       outdir: 1.trimed
       variables:
         log: "{outdir}/{project}.{part}.log"
@@ -60,17 +88,10 @@ DEFAULT:
         oseq2: "{outdir}/{project}_val_2.fq.gz"
         example: '{project}/hello'
       params:
-        ' ': '{iseq1}  {iseq2}'
-        --fastqc: ''
-        --fastqc_args: '"--threads 8 "'
-        --length: '20'
-        --paired: ''
-        --quality: '20'
-        -o: '{outdir}'
-        --cores: 2
-        --basename: "{project}"
         blank:
+          - "trim_galore --paired --cores 2 --fastqc --quality 20 --length 20 -o {outdir} --basename {project}  {iseq1} {iseq2} "
           - " 2>&1 | tee {log}  "
+          - "&& rm {iseq1} {iseq2}"
     trim:
       check_paths: []
       cmd_part: '1'
