@@ -264,11 +264,11 @@ DEFAULT:
           - ","
       variables:
         scripts_dir: *SCRIPTS
-        scripts_vstackfiles: "python {scripts_dir}/vstack_files.py"
+        scripts_vstackfiles: "python {scripts_dir}/tableStack.py vstack "
         oname_transcript: "{outdir}/transcript.expression_normalized.tsv"
         oname_subfamily: "{outdir}/subfamily.expression_normalized.tsv"
       
       params:
         blank:
-          - "{scripts_vstackfiles} {expressions} {projects} {oname_transcript}"
-          - "{scripts_vstackfiles} {expressions_subfamily} {projects} {oname_subfamily}"
+          - "{scripts_vstackfiles} -t {expressions} -p {projects} -o {oname_transcript}"
+          - "&& {scripts_vstackfiles} -t {expressions_subfamily} -p {projects} -o {oname_subfamily}"
