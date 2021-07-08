@@ -145,11 +145,11 @@ class Block:
         if len(cmd.strip()) == 0 :
             return " \n"
 
-        if cmd.strip().endswith("&"):
+        if cmd.strip().endswith("&") and not cmd.strip().endswith("&&") :
             backend=True
+            cmd=cmd.strip()[:-1]
         else:
             backend=False
-        cmd=cmd.strip()[:-1]
 
         cmd=self.process_overwrite(cmd)
 
