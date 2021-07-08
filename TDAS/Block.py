@@ -14,6 +14,7 @@ class Block:
 
     def __init__(self,name:str,outdir:str,project:str,params:dict,config_id="DEFAULT",func=default_func,*args,**kwargs):
         self.name=name
+        self.other_args=kwargs
         self.need = params.get("need",False)
         self.path = params.get("path"," ")
         self.iparams=params.get("iparams",{})
@@ -27,6 +28,9 @@ class Block:
         self.check_paths=params.get("check_paths",[])
         self.cmd_part=params.get("cmd_part","1")
         self.project=project
+
+        self.overwrite=params.get("overwrite",False) ### whether to overwrite exist file
+        self.overwrite_check=params.get("overwrite_check",[])
 
         self.sp_func=func
         self.sp_func_args=args
@@ -100,15 +104,64 @@ class Block:
             assert isinstance(path,str)
             assert os.path.exists(path.format_map(locals()))
 
+    def process_overwrite(self,cmd):
+        overwrite_opt=self.other_args["all_args"].overwrite ## set in options
+        overwrite=self.overwrite ## set in configs
+        overwrite_check=self.overwrite_check
+        
+        def check_paths(self,checks,cmd):
+            ochecks=[]
+            if len(checks)==0:
+                logging.warning(f" Part: {self.name} No path need check for overwrite ! infer from outparams!")
+                ochecks=list(self.outparams.values())
+                ochecks=[str.format_map(i,self.values) for i in ochecks]
+
+                logging.warning(f" infered overwrite checked paths: {ochecks}")
+            else:
+                ochecks=checks
+                ochecks=[str.format_map(i,self.values) for i in ochecks]
+
+                logging.info(f"paths need to check for overwrite: {ochecks}")
+            ochecks=[f" -e {i} " for i in ochecks]
+            ocmd=f''' if [[ ! ({' || '.join(ochecks)}) ]]; then {cmd}; fi '''
+            return ocmd
+
+        if  not overwrite_opt:
+            logging.info("## No overwrite allowed. if you want to allow overwrite, check --overwrite options")
+            return check_paths(self,overwrite_check,cmd) ### 
+        else:
+            if not overwrite:
+                return check_paths(self,overwrite_check,cmd)
+            else: ## want to overwrite
+                logging.warning(f"You choose to overwrite in the part {self.name} ")
+                return cmd
+        return cmd
+
     def wrap_cmd(self,cmd:str):
         reptimes=5
         project=self.values["project"]
-        header=f"echo \"{'#'*reptimes} start {self.name} {project} at TIME `date +'%D %T'` {'#'*reptimes}\" \n"
-        footer=f"echo \"{'#'*reptimes} stop {self.name} {project} at TIME `date +'%D %T'` {'#'*reptimes}\" \n"
-        if self.need:
-            return header+cmd.strip()+"\n"+footer
+        header=f"echo \"{'#'*reptimes} start {self.name} {project} at TIME `date +'%D %T'` {'#'*reptimes}\" && "
+        footer=f"echo \"{'#'*reptimes} stop {self.name} {project} at TIME `date +'%D %T'` {'#'*reptimes}\" "
+        if len(cmd.strip()) == 0 :
+            return " \n"
+
+        if cmd.strip().endswith("&"):
+            backend=True
         else:
-            return header+"#"*2+" "+cmd.strip()+"\n"+footer
+            backend=False
+        cmd=cmd.strip()[:-1]
+
+        cmd=self.process_overwrite(cmd)
+
+        if self.need :
+            ocmd = header+cmd.strip()+" && "+footer
+        else:
+            ocmd = header+"#"*2+" "+cmd.strip()+"\n"+footer
+        if backend:
+            ocmd = f"{ocmd} & \n"
+        else:
+            ocmd = f"{ocmd} \n"
+        return ocmd
     
     def generate_cmd(self):
         blank_list=[]

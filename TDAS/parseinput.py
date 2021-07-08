@@ -19,6 +19,8 @@ def parse_inputfile(config:dict,seqs:str):
     part="raw"
 
     for line in f:
+        if line.strip().startswith("#"):
+            continue ## pass comment lines
         lineSplit=line.split(sep)
         if not len(lineSplit):
             continue

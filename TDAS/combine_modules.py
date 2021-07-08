@@ -62,7 +62,7 @@ def out_intermedia_new(config):
     return True  
 
 
-def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0):
+def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0,**kwargs):
     project_num=0
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
@@ -81,7 +81,7 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0):
                 func=SPfucntions["other"]
             func_config=this_config["workflow"][part]
             #func(func_config,outdir,project,part)
-            BlockWork(name=part,outdir=outdir,project=project,params=func_config,config_id=configid,func=func)
+            BlockWork(name=part,outdir=outdir,project=project,params=func_config,config_id=configid,func=func,**kwargs)
     if len(root_out_dir)==0:
         outdir=""
     else:
@@ -89,7 +89,7 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0):
     threads=min(threads,project_num)
     out_intermedia_new(config)
     if stat:
-        stat_process(config=config,root_out_dir=root_out_dir,threads=threads,mode=mode)
+        stat_process(config=config,root_out_dir=root_out_dir,threads=threads,mode=mode,**kwargs)
     else:
         out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir,mode=mode),threads=threads)
     return True
@@ -98,7 +98,7 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0):
 
 
 
-def stat_process(config:dict,root_out_dir="",threads=8,mode=0):
+def stat_process(config:dict,root_out_dir="",threads=8,mode=0,**kwargs):
     for config_id in config.get("config_ids",["DEFAULT"]):
         this_config=config[config_id]
 
@@ -111,7 +111,7 @@ def stat_process(config:dict,root_out_dir="",threads=8,mode=0):
         stat_order=this_config["order_stat"]
         
         for part in stat_order:
-            BlockStat(name=part,outdir=outdir,project="STAT",params=this_config["stat"][part],config_id=config_id)
+            BlockStat(name=part,outdir=outdir,project="STAT",params=this_config["stat"][part],config_id=config_id,**kwargs)
     #out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir),threads=threads)
     if len(root_out_dir)==0:
         outdir=""
@@ -120,5 +120,4 @@ def stat_process(config:dict,root_out_dir="",threads=8,mode=0):
     out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir,mode=mode),threads=threads)
     out_intermedia_new(config)
 
-    print("stat modules is under developing")
     return True
