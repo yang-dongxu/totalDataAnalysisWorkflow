@@ -125,6 +125,8 @@ class Block:
             ochecks=[f" -e {i} " for i in ochecks]
             if len(ochecks):
                 ocmd=f''' if [[ ! ({' || '.join(ochecks)}) ]]; then {cmd}; fi '''
+            else:
+                ocmd=""
             return ocmd
 
         if  not overwrite_opt:
