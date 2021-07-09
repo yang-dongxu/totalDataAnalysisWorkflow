@@ -157,7 +157,7 @@ class Block:
         if self.need :
             ocmd = header+cmd.strip()+" && "+footer
         else:
-            ocmd = header+"#"*2+" "+cmd.strip()+"\n"+footer
+            ocmd = "## " + header+cmd.strip()+" && "+footer
         if backend:
             ocmd = f"{ocmd} & \n"
         else:
