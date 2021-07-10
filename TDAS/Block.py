@@ -125,6 +125,8 @@ class Block:
             ochecks=[f" -e {i} " for i in ochecks]
             if len(ochecks):
                 ocmd=f''' if [[ ! ({' || '.join(ochecks)}) ]]; then {cmd}; fi '''
+            else:
+                ocmd=""
             return ocmd
 
         if  not overwrite_opt:
@@ -157,7 +159,7 @@ class Block:
         if self.need :
             ocmd = header+cmd.strip()+" && "+footer
         else:
-            ocmd = header+"#"*2+" "+cmd.strip()+"\n"+footer
+            ocmd = "## " + header+cmd.strip()+" && "+footer
         if backend:
             ocmd = f"{ocmd} & \n"
         else:
