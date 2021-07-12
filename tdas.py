@@ -77,7 +77,7 @@ def add_cmd(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
     new_parser.add_argument('-i','--input_dir',dest="input_dir",type=str,action='store',help="input a dir where fq exists, and the script wiil determine the pair\n")
     new_parser.add_argument('-f','--seqinfo',dest="seqinfo",type=str,action="store",help="input a file with paired seqs, it should be a csv with no head, and contain three columns:project_name,pair1,pair2\n")
 
-    new_parser.add_argument("--overwrite",dest="overwrite",type=bool,default=False,action="store",help="whether overwrite of just skip the command gloably. In prioity this option is higher than setting in configs. Defalult is false \n")
+    new_parser.add_argument("--overwrite",dest="overwrite",default=False,action="store_true",help="whether overwrite of just skip the command gloably. In prioity this option is higher than setting in configs. Defalult is false \n")
 
     new_parser.add_argument('-o','--outdir',dest="outdir",type=str,action="store",default="",help="output dir")
     new_parser.add_argument('-c','--config',dest="config",type=str,action="store",default=DEFAULT_CONFIG)
