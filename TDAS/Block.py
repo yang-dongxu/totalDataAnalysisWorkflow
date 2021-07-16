@@ -126,7 +126,7 @@ class Block:
             if len(ochecks):
                 ocmd=f''' if [[ ! ({' || '.join(ochecks)}) ]]; then {cmd}; fi '''
             else:
-                ocmd=""
+                ocmd=cmd
             return ocmd
 
         if  not overwrite_opt:
