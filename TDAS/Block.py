@@ -112,11 +112,11 @@ class Block:
         def check_paths(self,checks,cmd):
             ochecks=[]
             if len(checks)==0:
-                logging.warning(f" Part: {self.name} No path need check for overwrite ! infer from outparams!")
+                logging.info(f" Part: {self.name} No path need check for overwrite ! infer from outparams!")
                 ochecks=list(self.outparams.values())
                 ochecks=[str.format_map(i,self.values) for i in ochecks]
 
-                logging.warning(f" infered overwrite checked paths: {ochecks}")
+                logging.info(f" infered overwrite checked paths: {ochecks}")
             else:
                 ochecks=checks
                 ochecks=[str.format_map(i,self.values) for i in ochecks]
