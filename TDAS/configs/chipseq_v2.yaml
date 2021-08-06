@@ -94,7 +94,7 @@ DEFAULT:
         outdir: "{outdir}"
    
     trim_pe:
-      path: trim_galore
+      path: " "
       check_paths: []
       cmd_part: '1'
       father:
@@ -113,17 +113,10 @@ DEFAULT:
         oseq2: "{outdir}/{project}_val_2.fq.gz"
         example: '{project}/hello'
       params:
-        ' ': '{iseq1}  {iseq2}'
-        --fastqc: ''
-        --fastqc_args: '"--threads 8 "'
-        --length: '20'
-        --paired: ''
-        --quality: '20'
-        -o: '{outdir}'
-        --cores: 2
-        --basename: "{project}"
         blank:
-          - " 2>&1 | tee {log} "    
+          - "trim_galore --paired --cores 2 --fastqc --quality 20 --length 20 -o {outdir} --basename {project}  {iseq1} {iseq2} "
+          - " 2>&1 | tee {log}  "
+          - "&& rm {iseq1} {iseq2}"
 
     bowtie2:
       need: true
