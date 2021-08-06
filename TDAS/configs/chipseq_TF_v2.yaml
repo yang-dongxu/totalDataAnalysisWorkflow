@@ -78,10 +78,10 @@ DEFAULT:
       father:
         iseq1:
           - get_fq
-          - seq1
+          - oseq1
         iseq2:
           - get_fq
-          - seq2
+          - oseq2
       params:
         -t: 10
         -o: "{outdir}"
