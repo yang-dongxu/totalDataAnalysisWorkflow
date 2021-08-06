@@ -29,7 +29,7 @@ class Block:
         self.cmd_part=params.get("cmd_part","1")
         self.project=project
 
-        self.overwrite=params.get("overwrite",True) ### whether to overwrite exist file,default is true if you want choose --overwrite option
+        self.overwrite=params.get("overwrite",kwargs["all_args"].overwrite_default) ### whether to overwrite exist file,default is false if you want choose --overwrite option
         self.overwrite_check=params.get("overwrite_check",[])
 
         self.sp_func=func
@@ -112,11 +112,11 @@ class Block:
         def check_paths(self,checks,cmd):
             ochecks=[]
             if len(checks)==0:
-                logging.warning(f" Part: {self.name} No path need check for overwrite ! infer from outparams!")
+                logging.info(f" Part: {self.name} No path need check for overwrite ! infer from outparams!")
                 ochecks=list(self.outparams.values())
                 ochecks=[str.format_map(i,self.values) for i in ochecks]
 
-                logging.warning(f" infered overwrite checked paths: {ochecks}")
+                logging.info(f" infered overwrite checked paths: {ochecks}")
             else:
                 ochecks=checks
                 ochecks=[str.format_map(i,self.values) for i in ochecks]
