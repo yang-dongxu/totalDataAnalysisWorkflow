@@ -3,9 +3,12 @@ rnaseq_featurecounts: rnaseq_featureCounts.yaml
 rnaseq_repeats: rnaseq_repeats.yaml
 
 
-chipseq: chipseq.yaml
-chipseqtf: chipseq_TF.yaml
+chipseq: chipseq_v2.yaml
+chipseq_merge: chipseq_merge.yaml
+chipseqtf: chipseq_TF_v2.yaml
 chipseqtf_merge: chipseq_TF_merge.yaml
+
+mnase: mnase.yaml
 
 blank: blank.yaml
 wgbs: wgbs_pe.yaml

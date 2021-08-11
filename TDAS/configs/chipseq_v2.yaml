@@ -66,7 +66,7 @@ DEFAULT:
         blank:
           - "cd {idir} "
           - "&& chmod 555 {seq1} "
-          - "&& chmod 555 {seq1} "
+          - "&& chmod 555 {seq2} "
           - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
           - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
       outparams:

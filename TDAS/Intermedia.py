@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import pandas as pd
 from copy import deepcopy
 #from totalDataAnalysisWorkflow.TDAS.Block import default_func
 import yaml
@@ -156,14 +157,16 @@ class Intermedia:
                 except:
                     logging.error(f"{part} in {config_id} has undefined cmd_part, SKIP!")
                     continue
-                command_attribute={"command":command,"order":order,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":0,"part":part,"name":cmd_name}
+                command_attribute={"command":command,"order":order,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":seq_orders.index(seq_order),"part":part,"name":cmd_name}
                 commands.append(command_attribute)
         return deepcopy(commands)
     
     @classmethod
     def __get_cmd_out_project_first(cls,config,root_out_dir=""):
+        logging.warning("project first setted! Beware of backgroup settings!")
         commands=cls.__prepare_cmd_out(config,root_out_dir)
-        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["project"],x["part"]))
+        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["project"],x["order"],x["part"]))
+        #print(pd.DataFrame(commands).to_csv(sep="\t"))
         return [(i["name"],i["command"]) for i in commands]
     
     @classmethod
