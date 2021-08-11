@@ -121,20 +121,27 @@ class Intermedia:
         seq_orders=[str(i) for i in config["seq_order"]]
 
         for config_id in config["config_ids"]:
+            if config_id not in config:
+                continue
             this_config=config[config_id]
-            orders=this_config["order"]
-            stat_orders=this_config["order_stat"]
+            orders=this_config["order"] if "order" in this_config else config["DEFAULT"]["order"]
+            stat_orders=this_config["order_stat"] if "order_stat" in this_config else config["DEFAULT"]["order_stat"]
             #cmd_name=this_config["cmd_name"]
             if len(root_out_dir)==0:
-                outdir=os.path.join(os.getcwd(),config[config_id]["outdir"])
+                o=config[config_id]["outdir"] if "outdir" in config[config_id] else config["DEFAULT"]["outdir"]
+                outdir=os.path.join(os.getcwd(),o)
             else:
                 outdir=root_out_dir
             cmd_name=os.path.join(outdir,this_config["cmd_name"])
             cmd_parts=[str(i) for i in this_config["cmd_fusion_order"]]
 
             for seq_info in [i for i in seq_infos if i[1] == config_id]:
-                project,a,seq_order=seq_info
+                project,_,seq_order=seq_info
+                c=cls.get_term("raw",project,"config_id")
+                if c!= config_id:
+                    continue
                 for part in orders:
+                    
                     command=cls.get_term(part,project,"command")
                     cmd_part=str(cls.get_term(part,project,"command_part"))
                     try:

@@ -1,3 +1,4 @@
+import logging
 import sys
 import os
 import re
@@ -49,12 +50,11 @@ def out_bash_cmd(cmds,threads=2):
 
     return True
 
-def out_intermedia(name):
-    with open (name,'w') as f:
-        f.write(Intermedia.dumps())
-    return True  
-
 def out_intermedia_new(config):
+    def out_intermedia(name):
+        with open (name,'w') as f:
+            f.write(Intermedia.dumps())
+        return True  
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
         name=os.path.join(config[configid]["outdir"],config[configid]["data_name"])
@@ -73,13 +73,29 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0,**kwargs):
         else:
             outdir=os.path.abspath(root_out_dir)
         mkdirs(outdir)
-        for part in this_config["order"]:
+
+
+        if "order" in this_config:
+            orders=this_config["order"]
+        elif "order" in config["DEFAULT"]:
+            orders=config["DEFAULT"]
+        else:
+            logging.error('you config file is broken! "order" term is needed! ')
+
+        #start to itereach part
+        for part in orders:
             partname=part.strip().split("/")[0]
-            if partname in SPfucntions:
+            if partname in SPfucntions: ## determine whether to process by pre-defined functions
                 func=SPfucntions[partname]
             else:
                 func=SPfucntions["other"]
-            func_config=this_config["workflow"][part]
+            if "workflow" in this_config and part in this_config["workflow"]: ## using part defined in the config
+                func_config=this_config["workflow"][part]
+            elif part in config["DEFAULT"]["workflow"]: ## using part defined in DEFAULT config
+                func_config=config["DEFAULT"]["workflow"][part]
+            else:
+                logging.error(f"the part : {part} do not exist in config: {configid} and DEFAULT! ")
+                sys.exit(1)
             #func(func_config,outdir,project,part)
             BlockWork(name=part,outdir=outdir,project=project,params=func_config,config_id=configid,func=func,**kwargs)
     if len(root_out_dir)==0:
@@ -96,8 +112,6 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0,**kwargs):
 
 
 
-
-
 def stat_process(config:dict,root_out_dir="",threads=8,mode=0,**kwargs):
     for config_id in config.get("config_ids",["DEFAULT"]):
         this_config=config[config_id]
@@ -109,9 +123,23 @@ def stat_process(config:dict,root_out_dir="",threads=8,mode=0,**kwargs):
         mkdirs(outdir)
 
         stat_order=this_config["order_stat"]
-        
+
+        if "order" in this_config:
+            stat_order=this_config["order_stat"]
+        elif "order" in config["DEFAULT"]:
+            stat_order=config["DEFAULT"]["order_stat"]
+        else:
+            logging.error('you config file is broken! "order" term is needed! ')
+
         for part in stat_order:
-            BlockStat(name=part,outdir=outdir,project="STAT",params=this_config["stat"][part],config_id=config_id,**kwargs)
+            if "stat" in this_config and part in this_config["stat"]:
+                func_config=this_config["stat"][part]
+            elif part in config["DEFAULT"]["stat"]:
+                func_config=config["DEFAULT"]["stat"][part]
+            else:
+                logging.error(f"the part : {part} do not exist in config: {config_id} and DEFAULT! ")
+                sys.exit
+            BlockStat(name=part,outdir=outdir,project="STAT",params=func_config,config_id=config_id,**kwargs)
     #out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir),threads=threads)
     if len(root_out_dir)==0:
         outdir=""
