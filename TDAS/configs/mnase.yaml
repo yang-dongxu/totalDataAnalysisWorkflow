@@ -184,7 +184,7 @@ DEFAULT:
       params:
         blank:
           - "n=`cat {ibed} | wc -l  ` "
-          - "&& c=`echo \"1000000/$n \" | bc` "
+          - "&& c=`echo \"1000000/$n \" | bc  -l ` "
           - "&& bedtools genomecov -bga -i {ibed} -scale $c -g {chromSize} > {bdg}"
           - "&&  bedGraphToBigWig {bdg} {chromSize} {obw} &"
 
