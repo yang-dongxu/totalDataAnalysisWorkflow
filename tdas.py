@@ -100,6 +100,7 @@ def add_stat(sub_parser:argparse.ArgumentParser,default_config=DEFAULT_CONFIG):
     new_parser.add_argument('-f','--intermedia-info',dest="seqinfo",type=str,action="store",help="input a file with paired seqs, it should be a csv with no head, and contain three columns:project_name,pair1,pair2\n")
 
     new_parser.add_argument("--overwrite",dest="overwrite",type=bool,default=False,action="store",help="whether overwrite of just skip the command gloably. In prioity this option is higher than setting in configs. Defalult is false \n")
+    new_parser.add_argument("--overwrite_false", dest="overwrite_default", default=True, action="store_false", help="when you open --overwrite, treat all default overwrite arrtibute in the config as false. if not selected, treat as true")
 
     new_parser.add_argument('-p','--threads',dest="threads",type=int,action="store",default=1,help="how many tasks can be put in back(&), by shell command wait")
     new_parser.add_argument('-m','--mode',dest="mode",type=int,action="store",default=1,help="out put mode, project-first (0) or part-first (1)")
