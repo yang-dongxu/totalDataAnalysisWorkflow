@@ -4,7 +4,7 @@ rnaseq_repeats: rnaseq_repeats.yaml
 
 
 chipseq: chipseq_v3.1.yaml
-chipseq_merge: chipseq_merge.yaml
+chipseq_merge: chipseq_merge_v1.2.yaml
 chipseqtf: chipseq_TF_v2.yaml
 chipseqtf_merge: chipseq_TF_merge.yaml
 
