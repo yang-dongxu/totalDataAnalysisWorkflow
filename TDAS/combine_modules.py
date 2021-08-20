@@ -68,6 +68,9 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0,**kwargs):
         project,configid=i
         project_num+=1
         this_config=config[configid]
+        for attr in ["cmd_name","outdir","data_name","cmd_fusion_order","order","order_stat","workflow","stat"]:
+            if attr not in this_config:
+                this_config[attr]=config["DEFAULT"][attr]
         if len(root_out_dir)==0:
             outdir=os.path.join(os.getcwd(),this_config["outdir"])
         else:

@@ -74,13 +74,16 @@ class Intermedia:
         if "seq_order" not in config:
             seqs.sort(key=lambda x:int(x[2]))
         else:
-            orders=[str(i) for i in config["seq_order"]]
+            if "seq_order"  in config["seq_info_format"]:
+                orders=[str(i) for i in config["seq_order"]]
+            else:
+                orders=list(range(1000))
             try:
                 seqs.sort(key=lambda x: orders.index(x[2]))
             except:
                 for i in seqs:
                     if i[2] not in orders:
-                        logging.error(f"{i[0]} has a undefined order {i[2]}, check it!\n")
+                        logging.error(f"{i[0]} has a undefined seq order {i[2]}, check it!\n")
         for i in seqs:
             yield i[0], i[1]
 
@@ -118,7 +121,12 @@ class Intermedia:
     def __prepare_cmd_out(cls,config,root_out_dir=""):
         commands=[]
         seq_infos=cls.iter_raw()
-        seq_orders=[str(i) for i in config["seq_order"]]
+
+        if "seq_order" in config["seq_info_format"]:
+            seq_orders=[str(i) for i in config["seq_order"]]
+            #print(seq_orders)
+        else:
+            seq_orders=list(range(1000))
 
         for config_id in config["config_ids"]:
             if config_id not in config:
@@ -137,6 +145,7 @@ class Intermedia:
 
             for seq_info in [i for i in seq_infos if i[1] == config_id]:
                 project,_,seq_order=seq_info
+                #print(seq_info)
                 c=cls.get_term("raw",project,"config_id")
                 if c!= config_id:
                     continue
@@ -158,29 +167,38 @@ class Intermedia:
                 project="STAT"
                 command=cls.get_term(part,project,"command")
                 cmd_part=str(cls.get_term(part,project,"command_part"))
-                order=stat_orders.index(part)
+                order=stat_orders.index(part)+len(orders)
                 try:
                     assert cmd_part in cmd_parts
                 except:
                     logging.error(f"{part} in {config_id} has undefined cmd_part, SKIP!")
                     continue
-                command_attribute={"command":command,"order":order,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":seq_orders.index(seq_order),"part":part,"name":cmd_name}
+                command_attribute={"command":command,"order":order,"config_id":config_id,"project":project,"cmd_part":cmd_parts.index(cmd_part),"seq_order":seq_orders[-1],"part":part,"name":cmd_name}
                 commands.append(command_attribute)
-        return deepcopy(commands)
+        #print(commands)
+        df_commands=pd.DataFrame([pd.Series(i) for i  in commands])
+        df_commands=df_commands.drop_duplicates(subset=list(df_commands.columns).remove("config_id")).reset_index(drop=True)
+        #print(df_commands.to_csv(sep="\t"))
+        return deepcopy(df_commands)
     
     @classmethod
     def __get_cmd_out_project_first(cls,config,root_out_dir=""):
         logging.warning("project first setted! Beware of backgroup settings!")
         commands=cls.__prepare_cmd_out(config,root_out_dir)
-        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["project"],x["order"],x["part"]))
+        commands=commands.sort_values(["config_id","cmd_part","seq_order","project","order","part"])
+        #commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["seq_order"],x["project"],x["order"],x["part"]))
         #print(pd.DataFrame(commands).to_csv(sep="\t"))
-        return [(i["name"],i["command"]) for i in commands]
+        #return [(i["name"],i["command"]) for i in commands]
+        return list(zip(commands["name"],commands["command"]))
     
     @classmethod
     def __get_cmd_out_part_first(cls,config,root_out_dir=""):
         commands=cls.__prepare_cmd_out(config,root_out_dir)
-        commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["part"],x["project"]))
-        return [(i["name"],i["command"]) for i in commands]
+        commands=commands.sort_values(["config_id","cmd_part","order","seq_order","project","part"])
+        #commands.sort(key=lambda x: (x["config_id"],x["cmd_part"],x["order"],x["seq_order"],x["project"],x["part"]))
+        #return [(i["name"],i["command"]) for i in commands]
+        commands.to_csv(sep="\t")
+        return list(zip(commands["name"],commands["command"]))
     
     
 

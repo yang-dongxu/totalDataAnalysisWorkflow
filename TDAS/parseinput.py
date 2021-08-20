@@ -18,6 +18,7 @@ def parse_inputfile(config:dict,seqs:str):
     f=open(seqinfo_file,'r')
     part="raw"
 
+    seq_order=1
     for line in f:
         if line.strip().startswith("#"):
             continue ## pass comment lines
@@ -34,7 +35,8 @@ def parse_inputfile(config:dict,seqs:str):
             Intermedia.add_term(part,project,term="command",value=cmd)
             Intermedia.add_term(part,project,term="command_part",value=cmd_part)
         if "seq_order"  not in names:
-            Intermedia.add_term(part,project,term="seq_order",value="1")
+            Intermedia.add_term(part,project,term="seq_order",value=seq_order)
+            seq_order+=1
         if "config_id" not in names:
             Intermedia.add_term(part,project,term="config_id",value=DEFAULT_CONFIG_ID)
 

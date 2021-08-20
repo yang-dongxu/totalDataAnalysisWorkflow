@@ -8,6 +8,8 @@ chipseq_merge: chipseq_merge_v1.2.yaml
 chipseqtf: chipseq_TF_v2.yaml
 chipseqtf_merge: chipseq_TF_merge.yaml
 
+chipseq_snp: chipseq_snp.yaml
+
 mnase: mnase.yaml
 
 blank: blank.yaml

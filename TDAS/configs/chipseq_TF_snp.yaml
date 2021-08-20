@@ -1,0 +1,251 @@
+env_variables:
+  - &DB "${{DB}}/mm10"
+  - &SCRIPTS "${{SCRIPTS}}"
+
+seq_info_format:
+- ","
+- project
+- ibam
+- snp1
+- snp2
+- vcf
+#- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids:
+  - DEFAULT
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: chipseq.snp.cmd.txt
+  log_name: log
+  outdir : 4.snp
+  data_name: data.yaml
+  order:
+    - get_snp
+    - peakcalling2
+    - toBwfrompeakcalling_1
+    - toBwfrompeakcalling_2
+
+  order_stat:
+    - stat_echo
+
+
+  workflow:
+
+    get_snp:
+      need: false
+      path: " "
+      outdir: "1.mapping"
+      father:
+        ibam:
+          - raw
+          - ibam
+        snp1:
+          - raw
+          - snp1
+        snp2:
+          - raw
+          - snp2
+        vcf:
+          - raw
+          - vcf
+      variables:
+        script_dir: *SCRIPTS
+        script: "{script_dir}/snpSelection.py split "
+        bamtobedpe: "{script_dir}/bamtobedpe.sh "
+        obam1: "{outdir}/{project}/{project}.{snp1}.bam"
+        obam2: "{outdir}/{project}/{project}.{snp2}.bam"
+        obam3: "{outdir}/{project}/{project}.mix.bam"
+        db: *DB
+        frag1: "{outdir}/{project}/{project}.{snp1}.fragment.bed"
+        frag2: "{outdir}/{project}/{project}.{snp2}.fragment.bed"
+        olog: "{outdir}/{project}/{project}.snp.log"
+      params:
+        blank:
+          - " python {script} {ibam} {vcf} {obam1} {obam2} {obam3} "
+          - "&& bash {bamtobedpe} {obam1} 4  | grep -e '^chr' > {frag1} "
+          - "&& bash {bamtobedpe} {obam2} 4 | grep -e '^chr' > {frag2} "
+          - " 2>&1 | tee {olog} & "
+      outparams:
+        obam1: "{obam1}"
+        obam2: "{obam2}"
+        obed1: "{frag1}"
+        obed2: "{frag2}"
+        olog: "{olog}"
+
+
+    peakcalling2:
+      need: true
+      path: " "
+      outdir: "2.peakcalling/{project}"
+      father:
+        ibed1:
+          - get_snp
+          - obed1
+        ibed2:
+          - get_snp
+          - obed2
+        snp1:
+          - raw
+          - snp1
+        snp2:
+          - raw
+          - snp2
+      cmd_part: 2
+      variables:
+        project1: "{project}.{snp1}"
+        olog1: "{outdir}/{project1}.macs2.log"
+        opeaks1: "{outdir}/{project1}_peaks.narrowPeak"
+        opeakbed1: "{outdir}/{project1}_peaks.macs2.bed"
+
+        project2: "{project}.{snp2}"
+        olog2: "{outdir}/{project2}.macs2.log"
+        opeaks2: "{outdir}/{project2}_peaks.narrowPeak"
+        opeakbed2: "{outdir}/{project2}_peaks.macs2.bed"
+      params:
+        blank:
+          - "macs2 callpeak -f BEDPE --SPMR -g mm -B -q 0.05 --keep-dup 1 -n {project1} --outdir {outdir} -t {ibed1} 2>&1 | tee {olog1} "
+          - " && macs2 callpeak -f BEDPE --SPMR -g mm -B -q 0.05 --keep-dup 1 -n {project2} --outdir {outdir} -t {ibed2} 2>&1 | tee {olog2} "
+          - " && cat {opeaks1} | cut -f 1-4,7 > {opeakbed1} "
+          - " && cat {opeaks2} | cut -f 1-4,7 > {opeakbed2} "
+          - " & "
+
+      outparams:
+        opeaks1: "{outdir}/{project1}_peaks.narrowPeak"
+        opeakbed1: "{opeakbed1}"
+        osummits1: "{outdir}/{project1}_summits.bed"
+        obdg1: "{outdir}/{project1}_treat_pileup.bdg"
+        olog1: "{olog1}"
+
+        opeaks2: "{outdir}/{project2}_peaks.narrowPeak"
+        opeakbed2: "{opeakbed2}"
+        osummits2: "{outdir}/{project2}_summits.bed"
+        obdg2: "{outdir}/{project2}_treat_pileup.bdg"
+        olog2: "{olog2}"
+
+    toBwfrompeakcalling_1:
+      need: true
+      path: " "
+      outdir: "3.Bw"
+      cmd_part: 2
+      father:
+        ibdg:
+          - peakcalling2
+          - obdg1
+        snp1:
+          - raw
+          - snp1
+        snp2:
+          - raw
+          - snp2
+      variables:
+        obw: "{outdir}/{project}.{snp1}.bw"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+      params:
+        blank:
+          - "wait "
+          - "&& sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
+          - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
+          - "&& rm -f  {ibdg}.tmp "
+      outparams:
+        obw: "{obw}"
+
+    toBwfrompeakcalling_2:
+      need: true
+      path: " "
+      outdir: "3.Bw"
+      cmd_part: 2
+      father:
+        ibdg:
+          - peakcalling2
+          - obdg2
+        snp1:
+          - raw
+          - snp1
+        snp2:
+          - raw
+          - snp2
+      variables:
+        obw: "{outdir}/{project}.{snp2}.bw"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+      params:
+        blank:
+          - "wait "
+          - "&& sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
+          - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
+          - "&& rm -f  {ibdg}.tmp "
+      outparams:
+        obw: "{obw}"
+
+  stat:
+    stat_echo:
+      need: true
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        projects:
+          - raw
+          - project
+          - ","
+        bw1s:
+          - toBwfrompeakcalling_1
+          - obw
+          - ","
+        bw2s:
+          - toBwfrompeakcalling_2
+          - obw
+          - ","
+        peak1:
+          - peakcalling2
+          - opeaks1
+          - ","
+        peak2:
+          - peakcalling2
+          - opeaks2
+          - ","
+      variables:
+        oname: "{outdir}/datainfo.csv"
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& echo project,{projects} >> {oname} "
+          - "&& echo bw1,{bw1s} >> {oname} "
+          - "&& echo bw2,{bw2s} >> {oname} "
+          - "&& echo peak1,{peak1} >> {oname} "
+          - "&& echo peak2,{peak2} >> {oname} "
+
+    stat_log:
+      need: true
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        bowtie2:
+          - bowtie2
+          - olog
+          - ","
+        macs:
+          - peakcalling2
+          - olog
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        script_dir: *SCRIPTS
+        script: "{script_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.stats"
+      params:
+        "python" : "{script}"
+        "-b": "{bowtie2}"
+        "-m": "{macs}"
+        "-p": "{projects}"
+        "-o": "{oname}"
+      outparams:
+        oname: "oname"
