@@ -5,6 +5,7 @@ env_variables:
 seq_info_format:
 - ","
 - project
+- idir
 - ibam
 - snp1
 - snp2
@@ -43,6 +44,9 @@ DEFAULT:
       path: " "
       outdir: "1.mapping"
       father:
+        idir:
+          - raw
+          - idir
         ibam:
           - raw
           - ibam
@@ -68,7 +72,8 @@ DEFAULT:
         olog: "{outdir}/{project}/{project}.snp.log"
       params:
         blank:
-          - " python {script} {ibam} {vcf} {obam1} {obam2} {obam3} "
+          - "cd {idir} "
+          - "&& python {script} {ibam} {vcf} {obam1} {obam2} {obam3} "
           - "&& bash {bamtobedpe} {obam1} 4  | grep -e '^chr' > {frag1} "
           - "&& bash {bamtobedpe} {obam2} 4 | grep -e '^chr' > {frag2} "
           - " 2>&1 | tee {olog} & "
