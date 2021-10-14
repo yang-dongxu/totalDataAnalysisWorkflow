@@ -1,38 +1,33 @@
 env_variables:
-  - &DB "${{DB}}/hg38"
+  - &DB "${{DB}}/mm10"
   - &SCRIPTS "${{SCRIPTS}}"
 
 seq_info_format:
 - ","
 - project
-- idir
 - seq1
-- seq2
 #- seq_order
-- config_id
+#- config_id
 seq_order:
   - 1
   - 2
   - 3
 config_ids: 
   - DEFAULT
-  - broad
-
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chiseq.cmd.txt
+  cmd_name: chipseq.se.cmd.txt
   log_name: log
-  outdir : dataset
+  outdir : out
   data_name: data.yaml
   order:
     - get_fq
     - fastqc
-    - trim_pe
+    - trim_se
     - bowtie2
+    - to_bam
     - sort_and_markdup
-    - to_fragment
-    - peakcalling14
     - peakcalling2
     - toBwfrompeakcalling
     - bwfc
@@ -43,68 +38,79 @@ DEFAULT:
   
   order_stat: 
     - stat_log
-    - stat_echo
 
   
   workflow:
     get_fq:
-      need: true
-      cmd_part: "1"
-      outdir: "1.raw_data"
+      need: false
+      outdir: raw
+      path: ""
       father:
-        idir:
-          - raw
-          - idir
-        seq1:
+        iseq1:
           - raw
           - seq1
-        seq2:
-          - raw
-          - seq2
       variables:
-        oseq1: "{outdir}/{project}.R1.fq.gz"
-        oseq2: "{outdir}/{project}.R2.fq.gz"
+        oseq1: "{outdir}/{project}.SE.fq.gz"
       params:
         blank:
-          - "cd {idir} "
-          - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
-          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
+          - "echo {iseq1} | tr , ' ' |xargs cat > {oseq1}"
       outparams:
-        oseq1: "{oseq1}"
-        oseq2: "{oseq2}"
-
+        seq1: "{oseq1}"
+          
     fastqc:
-      need: true
+      need: false
       outdir: 1.trimed
       path: fastqc
       father:
         iseq1:
           - get_fq
-          - oseq1
-        iseq2:
-          - get_fq
-          - oseq2
+          - seq1
       params:
         -t: 10
         -o: "{outdir}"
         blank: 
           - "{iseq1}"
-          - "{iseq2}"
       outparams:
         outdir: "{outdir}"
-   
+
+    trim_se:
+      need: true
+      path: trim_galore
+      outdir: 1.trimed
+      check_paths: []
+      cmd_part: "1"
+      father:
+        iseq:
+          - get_fq
+          - seq1 
+      variables:
+        log: "{outdir}/{project}.{part}.log"
+      outparams:
+        oseq1: "{outdir}/{project}_trimmed.fq.gz"
+      params:
+        ' ': '{iseq} '
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --quality: '20'
+        -o: '{outdir}'
+        --cores: 2
+        --basename: "{project}"
+        blank:
+          - " 2>&1  | tee {log} "
+
     trim_pe:
-      path: " "
+      path: trim_galore
       check_paths: []
       cmd_part: '1'
       father:
         iseq1:
         - get_fq
-        - oseq1
+        - seq1
         iseq2:
         - get_fq
-        - oseq2
-      need: true
+        - seq2
+      need: false
       outdir: 1.trimed
       variables:
         log: "{outdir}/{project}.{part}.log"
@@ -113,10 +119,18 @@ DEFAULT:
         oseq2: "{outdir}/{project}_val_2.fq.gz"
         example: '{project}/hello'
       params:
+        ' ': '{iseq1}  {iseq2}'
+        --fastqc: ''
+        --fastqc_args: '"--threads 8 "'
+        --length: '20'
+        --paired: ''
+        --quality: '20'
+        -o: '{outdir}'
+        --cores: 2
+        --basename: "{project}"
         blank:
-          - "trim_galore --paired --cores 2 --fastqc --quality 20 --length 20 -o {outdir} --basename {project}  {iseq1} {iseq2} "
-          - " 2>&1 | tee {log}  "
-          - "&& rm {iseq1} {iseq2}"
+          - " 2>&1  | tee {log}"
+      
 
     bowtie2:
       need: true
@@ -124,34 +138,46 @@ DEFAULT:
       path: ""
       father: 
         iseq1:
-          - trim_pe
+          - trim_se
           - oseq1
-        iseq2:
-          - trim_pe
-          - oseq2
       variables:
         olog: "{outdir}/{project}.mapping.log"
         osam: "{outdir}/{project}.sam"
-        obam: "{outdir}/{project}.bam"
-        threads: 10
         db: *DB
       params:
         blank:
-          - "bowtie2 -q -x {db}/hg38_main --no-discordant --threads {threads} -1 {iseq1} -2 {iseq2} -S {osam} 2>&1 | tee {olog} "
-          - " && samtools view --threads {threads} -f 0x2 -q 30 -o {obam} {osam} "
-          - " && rm {osam} "
+          - "bowtie2 -q -x {db}/mm10_main --no-discordant --threads 10 -U {iseq1} -S {osam}  "
+          - "2>&1 | tee {olog} "
       outparams:
         osam: "{osam}"
-        obam: "{obam}"
         olog: "{olog}"
-          
+      
+    to_bam:
+      need: true
+      path: "samtools view"
+      outdir: 2.mapping
+      father: 
+        isam:
+          - bowtie2
+          - osam
+      variables:
+        obam: "{outdir}/{project}.bam"
+      params:
+        --threads: 12
+        -q: 30 ## for repeats, turn this off, becaust their poor mapq
+        -o: "{obam}"
+        " ": "{isam}"
+      
+      outparams:
+        obam: "{obam}"
+    
     sort_and_markdup: 
       need: true
       path: " "
       outdir: 3.cleanBam
       father:
         ibam:
-          - bowtie2
+          - to_bam
           - obam
       variables:
         sort_bam: "{outdir}/{project}.sort"
@@ -169,27 +195,9 @@ DEFAULT:
       outparams:
         obam: "{cleanbam}"
 
-    to_fragment:
-      need: true
-      path: " "
-      outdir: 3.cleanBam
-      father:
-        ibam:
-          - sort_and_markdup
-          - obam 
-      variables:
-        obed: "{outdir}/{project}.fragment.bed"
-        scripts_dir: *SCRIPTS
-        script: "{scripts_dir}/bamtobedpe.sh"
-      params:
-        blank:
-          - "bash {script} {ibam} 8 | sort -k1,1 -k2,2n > {obed}"
-      outparams:
-        obed: "{obed}"
-
     peakcalling14:
       need: true 
-      path: "macs14 "
+      path: ""
       outdir: "4.peakcalling/{project}"
       father:
         ibam:
@@ -199,39 +207,41 @@ DEFAULT:
       variables:
         olog: "{outdir}/{project}.macs14.log"
       params:
-        blank: 
-          - "-f BAM -g mm -p 1e-5 --keep-dup 1 --nomodel --shiftsize 73 -n  {outdir}/{project} -t {ibam}  2>&1 | tee {olog} &" ##pairend, no need for shift
+        blank:
+          - "macs14 -f BAM -g mm -p 1e-5 --keep-dup 1 -n {outdir}/{project} -t {ibam} "
+          - "2>&1 | tee {olog} &"
       outparams:
         opeaks: "{outdir}/{project}_peaks.bed"
-        opeakbed: "{outdir}/{project}_peaks.bed"
         osummits: "{outdir}/{project}_summits.bed"
         obdg: "{outdir}/{project}_treat_pileup.bdg"
         olog: "{olog}"
-
+      
     peakcalling2:
       need: true
       path: "macs2 callpeak"
-      outdir: 4.peakcalling
+      outdir: "4.peakcalling/{project}"
       father:
         ibam:
           - sort_and_markdup
           - obam
       cmd_part: 2
       variables:
-        olog: "{outdir}/{project}/{project}.macs2.log"
-        opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
-        opeakbed: "{outdir}/{project}/{project}_peaks.macs2.bed"
+        olog: "{outdir}/{project}.macs2.log"
+        opeaks: "{outdir}/{project}_peaks.narrowPeak"
+        opeakbed: "{outdir}/{project}_peaks.bed"
       params:
-        blank: 
-          - " -f BAMPE --SPMR -g hs -B -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project} --outdir  {outdir}/{project} -t {ibam} "
-          - " 2>&1 | tee {olog} &"
+        blank:
+          - "macs2 callpeak -f BAM --SPMR -g mm -B -q 0.05 --nomodel --extsize 147 --keep-dup 1 -n {project} --outdir {outdir} -t {ibam} "
+          - "2>&1 | tee {olog} "
+          - "&& cat {opeaks} | cut -f 1-4,7 > {opeakbed} &"
+    
       outparams:
-        opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
+        opeaks: "{outdir}/{project}_peaks.narrowPeak"
         opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}/{project}_summits.macs2.bed"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        osummits: "{outdir}/{project}_summits.bed"
+        obdg: "{outdir}/{project}_treat_pileup.bdg"
         olog: "{olog}"
-
+    
     toBwfrompeakcalling:
       need: true
       path: " "
@@ -244,13 +254,12 @@ DEFAULT:
       variables:
         obw: "{outdir}/{project}.bw"
         db: *DB
-        chromSize: "{db}/hg38_main.chrom.sizes"
+        chromSize: "{db}/mm10_main.chrom.sizes"
       params:
         blank: 
-          - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
+          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b"  > {ibdg}.tmp '
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
-          - "&& rm -f  {ibdg}.tmp "
-          - "&& rm -f {ibdg} &"
+          - "&& rm -f  {ibdg}.tmp &"
       outparams:
         obw: "{obw}"
 
@@ -267,20 +276,19 @@ DEFAULT:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_fc.sh"
         db: *DB
-        chromSize: "{db}/hg38_main.chrom.sizes"
+        chromSize: "{db}/mm10_main.chrom.sizes"
         obw: "{outdir}/{project}.fc.bw"
       params:
         blank:
-          - "ln -snf {ibw} {outdir}/  "
           - "bash {script} {ibw} {chromSize} {obw}"
       outparams:
         obw: "{obw}"
 
-    
+
     ceas:
-      need: true
+      need: true 
       path: ceasBW
-      outdir: 6.ceas
+      outdir: "6.ceas"
       cmd_part: 2
       father:
         ibw:
@@ -288,16 +296,16 @@ DEFAULT:
           - obw
         ibed: 
           - peakcalling2
-          - osummits
+          - opeakbed
       variables:
         oname: "{outdir}/{project}/{project}"
         bisize: 2000
         db: *DB
-        chromsize: "{db}/hg38_main.chrom.sizes"
+        chromsize: "{db}/mm10_main.chrom.sizes"
       functions:
         - "mkdirs('{outdir}/{project}')"
       params:
-        -g: "{db}/hg38.refGene.main.sqlite3"
+        -g: "{db}/mm10.refGene.sqlite3"
         -l: "{chromsize}"
         --dump: " "
         --bg: " "
@@ -318,8 +326,8 @@ DEFAULT:
       outdir: "4.peakcalling/{project}"
       father: 
         ipeaks:
-          - peakcalling14
-          - opeaks
+          - peakcalling2
+          - opeakbed
         ibam:
           - sort_and_markdup
           - obam
@@ -329,7 +337,7 @@ DEFAULT:
         oname: "{outdir}/{project}.{part}.stat"
       params:
         blank:
-          - "python {script} {ipeaks} {ibam} {oname} &" 
+          - "python {script} {ipeaks} {ibam} {oname}"
       outparams:
         oname: "{oname}"
     
@@ -341,13 +349,13 @@ DEFAULT:
       outdir: "7.bw_summary"
       father:
         ibw:
-          - toBwfrompeakcalling
+          - bwfc
           - obw
       variables:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_summary_bed.py"
         db: *DB
-        bed: "{db}/hg38.refGene.main.promoter_2k.bed"
+        bed: "{db}/mm10.refGene.main.promoter_2k.bed"
         osummary: "{outdir}/{project}.summary"
       params:
         blank:
@@ -362,13 +370,13 @@ DEFAULT:
       outdir: "8.metegene"
       father:
         ibw:
-          - toBwfrompeakcalling
+          - bwfc
           - obw
       variables:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_summary_bed_bins.py"
         db: *DB
-        bed: "{db}/hg38.refGene.main.bed"
+        bed: "{db}/mm10.refGene.main.bed"
         oname: "{outdir}/{project}.tsv"
 
       params:
@@ -376,10 +384,6 @@ DEFAULT:
         -b: "{bed}"
         -w: "{ibw}"
         -n: "100"
-        "-5": 2000
-        "-3": 2000
-        "--5bins": 100
-        "--3bins" : 100
         -o: "{oname}"
         blank: 
           - " &"
@@ -398,7 +402,7 @@ DEFAULT:
           - olog
           - ","
         macs:
-          - peakcalling14
+          - peakcalling2
           - olog
           - ","
         peaks:
@@ -412,7 +416,7 @@ DEFAULT:
       variables:
         script_dir: *SCRIPTS
         script: "{script_dir}/extract_log.py"
-        oname: "{outdir}/0.basic.stats"
+        oname: "{outdir}/0.basic.se.stats"
       params:
         "python" : "{script}"
         "-b": "{bowtie2}"
@@ -422,100 +426,6 @@ DEFAULT:
         "-o": "{oname}"
       outparams:
         oname: "oname"
-
-    stat_echo:
-      need: true 
-      outdir: "0.stat"
-      path: " "
-      variables:
-        oname: "{outdir}/datainfo.csv"
-      iparams_list:
-        bam: 
-          - sort_and_markdup
-          - obam
-          - ","
-        peak:
-          - peakcalling14
-          - opeaks
-          - ","
-        peak_macs2:
-          - peakcalling2
-          - opeaks
-          - ","          
-        bw:
-          - bwfc
-          - obw
-          - ","
-        fragments:
-          - to_fragment
-          - obed
-          - ","
-        project:
-          - raw
-          - project
-          - ","
-      params:
-        blank:
-          - "echo '' > {oname} "
-          - "&& echo project,{project} >> {oname}"
-          - "&& echo bam,{bam} >> {oname}"
-          - "&& echo bw,{bw} >> {oname}"
-          - "&& echo peak,{peak} >> {oname}"
-          - "&& echo peak_macs2,{peak_macs2} >> {oname}"
-          - "&& echo fragment,{fragments} >> {oname}"
-
-        
     
-
-broad:
-  cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chiseq.cmd.txt
-  log_name: log
-  outdir : dataset
-  data_name: data.yaml
-  order:
-    - get_fq
-    - fastqc
-    - trim_pe
-    - bowtie2
-    - sort_and_markdup
-    - to_fragment
-    - peakcalling14
-    - peakcalling2
-    - toBwfrompeakcalling
-    - bwfc
-    - ceas
-    - frip_cal
-    - bw_summary
-    - metagene
-  
-  order_stat: 
-    - stat_log
-    - stat_echo
-  
-  workflow:
-    peakcalling2:
-      need: true
-      path: "macs2 callpeak"
-      outdir: 4.peakcalling
-      father:
-        ibam:
-          - sort_and_markdup
-          - obam
-      cmd_part: 2
-      variables:
-        olog: "{outdir}/{project}/{project}.macs2.log"
-        opeaks: "{outdir}/{project}/{project}_peaks.narrowPeak"
-        opeakbed: "{outdir}/{project}/{project}_peaks.bed"
-      params:
-        blank: 
-          - " -f BAMPE --SPMR -g hs -B -q 0.05 --keep-dup 1 --broad --nomodel --extsize 147 -n {project} --outdir  {outdir}/{project} -t {ibam} "
-          - " 2>&1 | tee {olog} &"
-      outparams:
-        opeaks: "{outdir}/{project}/{project}_peaks.broadPeak"
-        opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}/{project}_summits.bed"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
-        olog: "{olog}"
 
 

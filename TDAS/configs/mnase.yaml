@@ -154,7 +154,7 @@ DEFAULT:
         obed_reads: "{outdir}/{project}.reads.bed"
         max_len: 200 ## source from deeptools default params
         min_len: 130 ## source from deeptools default params
-        flank: 1 ## how many base of center flank used in each fragment
+        flank: 37 ## how many base of center flank used in each fragment
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bamtobedpe.sh"
         script_reads: "{scripts_dir}/bamtoreads.sh"

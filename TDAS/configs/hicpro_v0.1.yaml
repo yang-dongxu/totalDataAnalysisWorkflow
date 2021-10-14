@@ -1,0 +1,87 @@
+env_variables:
+  - &DB "${{DB}}/mm10"
+  - &SCRIPTS "${{SCRIPTS}}"
+  - &HICCONFIG "config-hicpro-mm10.txt"
+
+seq_info_format:
+- ";"
+- project
+- idir
+- seq1
+- seq2
+#- seq_order
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids: 
+  - DEFAULT
+
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: hicpro_cmd.txt
+  log_name: log
+  outdir : hicpro_envs
+  data_name: data.yaml
+  order:
+    - get_fq
+    - hicpro
+  
+  order_stat: []
+  
+  workflow:
+    get_fq:
+      need: true
+      cmd_part: "1"
+      outdir: "1.raw_data/{project}"
+      father:
+        idir:
+          - raw
+          - idir
+        seq1:
+          - raw
+          - seq1
+        seq2:
+          - raw
+          - seq2
+      variables:
+        oseq1: "{outdir}/{project}_R1.fq.gz"
+        oseq2: "{outdir}/{project}_R2.fq.gz"
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
+          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+        rawdir: "1.raw_data"
+
+    hicpro:
+      need: true
+      cmd_part: "1"
+      outdir: "2.hicpro_envs"
+      father: 
+        rawdir: 
+          - get_fq
+          - raw_dir
+      variables:
+        hicpro: "$HICPro"
+        conda_env: "Hicpro_v3"
+        odir: "{outdir}/hicproout"
+        config_path: *HICCONFIG
+
+      params:
+        blank:
+          - "conda activate {conda_env} && "
+          - "{hicpro} -i {rawdir} -o {odir} -c {config_path} "
+
+      outparams:
+        stats: "{odir}/hic_results/{project}"
+        validPairs: "{odir}/hic_results/data/{project}/{project}.allValidPairs"
+
+    
+
+
+  stat: {}
