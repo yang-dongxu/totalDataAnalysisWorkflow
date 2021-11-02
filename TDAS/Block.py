@@ -29,7 +29,7 @@ class Block:
         self.cmd_part=params.get("cmd_part","1")
         self.project=project
 
-        self.overwrite=params.get("overwrite",kwargs["all_args"].overwrite_default) ### whether to overwrite exist file,default is false if you want choose --overwrite option
+        self.overwrite=params.get("overwrite",kwargs["all_args"].overwrite_default) ### whether to overwrite exist file,default is true if you want choose --overwrite option
         self.overwrite_check=params.get("overwrite_check",[])
 
         self.sp_func=func
