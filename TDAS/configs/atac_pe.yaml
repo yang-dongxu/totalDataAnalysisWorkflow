@@ -70,7 +70,7 @@ DEFAULT:
         oseq2: "{oseq2}"
 
     fastqc:
-      need: true
+      need: false
       outdir: 1.trimed
       path: fastqc
       father:
@@ -104,13 +104,22 @@ DEFAULT:
       outdir: 1.trimed
       variables:
         log: "{outdir}/{project}.{part}.log"
+        oseq1: "{outdir}/{project}.trimed.R1.fq.gz"
+        oseq2: "{outdir}/{project}.trimed.R2.fq.gz"
+        json: "{outdir}/{project}.report.json"
+        html: "{outdir}/{project}.report.html"
+        threads: 4 # pe, each fastq will use threads seperately
       outparams:
-        oseq1: "{outdir}/{project}_val_1.fq.gz"
-        oseq2: "{outdir}/{project}_val_2.fq.gz"
-        example: '{project}/hello'
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+        json: "{json}"
       params:
         blank:
-          - "trim_galore --paired --cores 2 --fastqc --quality 20 --length 20 -o {outdir} --basename {project}  {iseq1} {iseq2} "
+          - "fastp -i {iseq1} -I {iseq2} -o {oseq1} -O {oseq2} -e 20 -j {json} -h {html} -p -R '{project}' -w {threads} -D"
+          # e: average error rage
+          # p: over expressed seq analyze 
+          # R: title of report
+          # D: deduplicate
           - " 2>&1 | tee {log}  "
           - "&& rm {iseq1} {iseq2}"
 

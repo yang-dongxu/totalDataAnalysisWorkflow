@@ -190,10 +190,26 @@ DEFAULT:
           - "sambamba markdup -r -t 10 {ibam} {sort_bam} &&"
           - "sambamba sort -t 10 {sort_bam} -o {cleanbam} &&"
           - "rm {sort_bam} "
-    
-      
       outparams:
         obam: "{cleanbam}"
+
+    to_fragment:
+      need: true
+      path: " "
+      outdir: 3.cleanBam
+      father:
+        ibam:
+          - sort_and_markdup
+          - obam 
+      variables:
+        obed: "{outdir}/{project}.fragment.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bamtobedpe.sh"
+      params:
+        blank:
+          - "bash {script} {ibam} 8 | sort -k1,1 -k2,2n > {obed}"
+      outparams:
+        obed: "{obed}"
 
     peakcalling14:
       need: true 
@@ -218,7 +234,7 @@ DEFAULT:
       
     peakcalling2:
       need: true
-      path: "macs2 callpeak"
+      path: ""
       outdir: "4.peakcalling/{project}"
       father:
         ibam:
