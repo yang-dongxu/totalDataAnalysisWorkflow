@@ -142,7 +142,7 @@ DEFAULT:
         db: *DB
       params:
         blank:
-          - "bowtie2 -q -x {db}/hg38_main --no-discordant --threads {threads} -1 {iseq1} -2 {iseq2} -S {osam} 2>&1 | tee {olog} "
+          - "bowtie2 -q -x {db}/mm10_main --no-discordant --threads {threads} -1 {iseq1} -2 {iseq2} -S {osam} 2>&1 | tee {olog} "
           - " && samtools view --threads {threads} -f 0x2 -q 30 -o {obam} {osam} "
           - " && rm {osam} "
       outparams:
@@ -206,7 +206,7 @@ DEFAULT:
         sp: mm
         obdg: "{outdir}/{project}.ocr_treat_pileup.bdg"
         opeaks: "{outdir}/{project}.ocr_peaks.narrowPeak"
-        olog: "{outdir}/{project}/{project}.ocr.macs2.log"
+        olog: "{outdir}/{project}.ocr.macs2.log"
         obw: "{outdir}/{project}.ocr.bw"
         db: *DB
         chromSize: "{db}/mm10_main.chrom.sizes"
@@ -244,7 +244,7 @@ DEFAULT:
         sp: mm
         obdg: "{outdir}/{project}.nuc_treat_pileup.bdg"
         opeaks: "{outdir}/{project}.nuc_peaks.narrowPeak"
-        olog: "{outdir}/{project}/{project}.nuc.macs2.log"
+        olog: "{outdir}/{project}.nuc.macs2.log"
         obw: "{outdir}/{project}.nuc.bw"
         db: *DB
         chromSize: "{db}/mm10_main.chrom.sizes"
@@ -254,7 +254,7 @@ DEFAULT:
       params:
         blank: 
           - "cat {ibed} | awk '$3-$2 > {thre}' | grep -v chrM > {nuc_bed} &&"
-          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.nuc --outdir  {outdir} -t {nuc_bed} &&  2>&1 | tee {olog} && "
+          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.nuc --outdir  {outdir} -t {nuc_bed} &  2>&1 | tee {olog} && "
           - "echo \"##### macs2 call peak done \" &&" 
           - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp "
           - "&& bedGraphToBigWig {obdg}.tmp {chromSize} {obw} "
