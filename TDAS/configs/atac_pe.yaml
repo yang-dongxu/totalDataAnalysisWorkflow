@@ -31,6 +31,7 @@ DEFAULT:
     - bowtie2
     - sort_and_markdup
     - to_fragment
+    - all
     - ocr
     - nucleosome
     - frip_cal_ocr
@@ -192,10 +193,48 @@ DEFAULT:
       outparams:
         obed: "{obed}"
 
+    all:
+      need: true 
+      path: " "
+      outdir: "5.allLen/{project}"
+      father: 
+        ibed:
+          - to_fragment
+          - obed
+      variables:
+        all_bed: "{outdir}/{project}.all.fragment.bed"
+        thre: 250
+        sp: mm
+        obdg: "{outdir}/{project}.all_treat_pileup.bdg"
+        opeaks: "{outdir}/{project}.all_peaks.narrowPeak"
+        olog: "{outdir}/{project}.all.macs2.log"
+        obw: "{outdir}/{project}.all.bw"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_fc.sh"
+        ofcbw: "{outdir}/{project}.all.fc.bw"
+      params:
+        blank: 
+          - "cat {ibed} | awk -v l={thre} 'BEGIN{{OFS=\"\\t\"}}{{mean=int(($2+$3)/2);$2=mean-l/2;$3=mean+l/2;print $0}}' | grep -v chrM > {all_bed} &&"
+          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.all --outdir  {outdir} -t {all_bed} 2>&1 | tee {olog} && "
+          - "echo \"########## macs2 call peak  {project} done \" &&"
+          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp && "
+          - "bedGraphToBigWig {obdg}.tmp {chromSize} {obw} && "
+          - "rm -f  {obdg}.tmp &&"
+          - "rm -f {obdg} &&"
+          - "bash {script} {obw} {chromSize} {ofcbw} "
+      outparams:
+        ofrag: "{all_bed}"
+        opeaks: "{opeaks}"
+        olog: "{olog}"
+        obw: "{obw}"
+        ofcbw: "{ofcbw}"
+
     ocr: 
       need: true 
       path: " "
-      outdir: "5.ocr/{project}"
+      outdir: "6.ocr/{project}"
       father: 
         ibed:
           - to_fragment
@@ -217,12 +256,12 @@ DEFAULT:
         blank: 
           - "cat {ibed} | awk '$3-$2 < {thre}' | grep -v chrM > {ocr_bed} &&"
           - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.ocr --outdir  {outdir} -t {ocr_bed} 2>&1 | tee {olog} && "
-          - "echo \"##### macs2 call peak done \" &&"
-          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp "
-          - "&& bedGraphToBigWig {obdg}.tmp {chromSize} {obw} "
-          - "&& rm -f  {obdg}.tmp "
-          - "&& rm -f {obdg} "
-          - "&& bash {script} {obw} {chromSize} {ofcbw}"
+          - "echo \"########## macs2 call peak  {project} done \" &&"
+          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp && "
+          - "bedGraphToBigWig {obdg}.tmp {chromSize} {obw} && "
+          - "rm -f  {obdg}.tmp &&"
+          - "rm -f {obdg} &&"
+          - "bash {script} {obw} {chromSize} {ofcbw} "
       outparams:
         ofrag: "{ocr_bed}"
         opeaks: "{opeaks}"
@@ -233,7 +272,7 @@ DEFAULT:
     nucleosome:
       need: true 
       path: " "
-      outdir: "6.nuc/{project}"
+      outdir: "7.nuc/{project}"
       father: 
         ibed:
           - to_fragment
@@ -254,13 +293,13 @@ DEFAULT:
       params:
         blank: 
           - "cat {ibed} | awk '$3-$2 > {thre}' | grep -v chrM > {nuc_bed} &&"
-          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.nuc --outdir  {outdir} -t {nuc_bed} &  2>&1 | tee {olog} && "
+          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.nuc --outdir  {outdir} -t {nuc_bed}  2>&1 | tee {olog} && "
           - "echo \"##### macs2 call peak done \" &&" 
-          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp "
-          - "&& bedGraphToBigWig {obdg}.tmp {chromSize} {obw} "
-          - "&& rm -f  {obdg}.tmp "
-          - "&& rm -f {obdg} "
-          - "&& bash {script} {obw} {chromSize} {ofcbw}"
+          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp && "
+          - "bedGraphToBigWig {obdg}.tmp {chromSize} {obw} && "
+          - "rm -f  {obdg}.tmp &&"
+          - "rm -f {obdg} &&"
+          - "bash {script} {obw} {chromSize} {ofcbw} "
       outparams:
         ofrag: "{nuc_bed}"
         opeaks: "{opeaks}"
@@ -272,7 +311,7 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: "5.ocr/{project}"
+      outdir: "6.ocr/{project}"
       father: 
         ipeaks:
           - ocr
@@ -292,7 +331,7 @@ DEFAULT:
 
     linkbw:
       need: true 
-      outdir: "7.Bw"
+      outdir: "8.Bw"
       father:
         ocr_bw:
           - ocr
@@ -303,13 +342,13 @@ DEFAULT:
       params:
         blank:
           - "ln -snf {ocr_bw} {outdir} &&"
-          - "ln -snf {ocr_fcbw} {outdir} &&"
+          - "ln -snf {ocr_fcbw} {outdir} "
     
     metagene_nuc:
       need: true 
       cmd_part: 3
       path: " "
-      outdir: "8.metagene_nuc"
+      outdir: "9.metagene_nuc"
       father:
         ibw:
           - nucleosome
@@ -338,7 +377,7 @@ DEFAULT:
 
     frag_len:
       need: true
-      outdir: 9.frag_len
+      outdir: 10.frag_len
       father:
         raw_frag:
           - to_fragment
@@ -351,8 +390,8 @@ DEFAULT:
         nuc_stat: "{outdir}/{project}.nuc.length_distribution.txt"
       params:
         blank:
-          - "cat {raw_frag} | awk '{{print $3-$2}}' | uniq -c > {raw_stat} &&"
-          - "cat {nuc_frag} | awk '{{print $3-$2}}' | uniq -c > {raw_stat} "
+          - "cat {raw_frag} | awk '{{print $3-$2}}' | sort  | uniq -c > {raw_stat} &&"
+          - "cat {nuc_frag} | awk '{{print $3-$2}}' | sort  | uniq -c > {raw_stat} "
 
 
   stat: 
