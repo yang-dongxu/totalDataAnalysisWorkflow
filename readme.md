@@ -22,7 +22,7 @@ To use this library, you have to to these steps:
   python tdas.py generate -n "configname" -o "you destination dir"
   ```
 * generate a seqpair table, for example, try.seqpair.table
-  > seqpair table is a special table defined here, it describes you raw info. It\'s character-delimter table, with define in the config yaml you choose
+  > seqpair table is a special table defined here, it describes you raw info. It\'s character-delimter table, with define in the config yaml you choose  
   > Generally, it should contain four columns: project(row name);idir(where you input file is);iseq1(the name of R1 in pair-end seq. can be others if you define it in the yaml);iseq2(R2 fastq.gz name)
 * finally, you can get output we want, by command below
     ```shell
@@ -31,20 +31,33 @@ To use this library, you have to to these steps:
 	**by the command, you will get a dir created with name defined in the config yaml, and a bash script is in the dir**, you can treat it in anyway you want. Enjoy your time~
 
 
-
-# Detail
-
-## cli command
+# Advanced
 
 ## config format
+config file here used is a yaml format file.  
+It consists of two parts: head info and process body: 
+- In the head part, it defines how your seqpair table look like, order to process each record, and how many config part you can use  
+- In the process body, many config part is defined detail.
 
-# Advanced
+Config part has three parts: header, workflow, and stat functions.
+header part about output info, process order  
+
+**work flow part** defined steps used in head. Each steps will apply to every record in seqpair table, if the step is used in head order module.  
+
+**stats function part** define some post-process steps, such as basic QC summmarise or file-info summary.   
+Or you can do anythings you want.   
 
 ## self-defined functions
 
+For some complex functions which can't describe by yaml config file, you can add you own process function within the frame we provided here.
+see spfunctions.py.   
+**Don't forget add self-defined functions to the bottom dicts! **
+
 ## add you own keywords
 
+Key words are key-items in the yaml config file. We define the process in Block.py.    
+It's a complex work so not suggested. But you are welcome to do this if you really to do so. I am willing to provide helps as your request! 
 
-
+---
 Any problem, contact me: yang_dongxu@qq.com
 
