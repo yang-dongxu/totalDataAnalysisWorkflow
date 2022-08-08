@@ -21,7 +21,7 @@ DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
   cmd_name: chipseq.cmd.txt
   log_name: log
-  outdir : 1.chipseqout
+  outdir : 1.byReplicates
   data_name: data.yaml
   order:
     - get_fq
@@ -201,7 +201,7 @@ DEFAULT:
         olog: "{outdir}/{project}.macs14.log"
       params:
         -f: BAM
-        -g: hs
+        -g: mm
         -p: 1e-5
         --keep-dup: 1
         -n: "{outdir}/{project}"
