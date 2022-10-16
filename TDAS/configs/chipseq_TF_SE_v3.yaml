@@ -1,5 +1,5 @@
 env_variables:
-  - &DB "${{DB}}/hg38"
+  - &DB "${{DB}}/mm10"
   - &SCRIPTS "${{SCRIPTS}}"
 
 seq_info_format:
@@ -8,7 +8,7 @@ seq_info_format:
 - idir
 - seq1
 #- seq_order
-- config_id
+#- config_id
 seq_order:
   - 1
   - 2
@@ -22,7 +22,7 @@ DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
   cmd_name: chiseq.cmd.txt
   log_name: log
-  outdir : dataset
+  outdir : 1.byReplicates
   data_name: data.yaml
   order:
     - get_fq
@@ -35,10 +35,7 @@ DEFAULT:
     - peakcalling2
     - toBwfrompeakcalling
     - bwfc
-    - ceas
     - frip_cal
-    - bw_summary
-    - metagene
   
   order_stat: 
     - stat_log
@@ -118,11 +115,8 @@ DEFAULT:
       path: ""
       father: 
         iseq1:
-          - trim_pe
+          - trim_se
           - oseq1
-        iseq2:
-          - trim_pe
-          - oseq2
       variables:
         olog: "{outdir}/{project}.mapping.log"
         osam: "{outdir}/{project}.sam"
@@ -131,8 +125,8 @@ DEFAULT:
         db: *DB
       params:
         blank:
-          - "bowtie2 -q -x {db}/hg38_main --no-discordant --threads {threads} -U {iseq1}  -S {osam} 2>&1 | tee {olog} "
-          - " && samtools view --threads {threads} -q 30 -o {obam} {osam} "
+          - "bowtie2 -q -x {db}/mm10_main --no-discordant --threads {threads} -U {iseq1}  -S {osam} 2>&1 | tee {olog} "
+          - " && samtools view --threads {threads}  -q 30 -o {obam} {osam} "
           - " && rm {osam} "
       outparams:
         osam: "{osam}"
@@ -194,7 +188,7 @@ DEFAULT:
         olog: "{outdir}/{project}.macs14.log"
       params:
         blank: 
-          - "-f BAM -g hs -p 1e-5 --keep-dup 1 --nomodel --shiftsize 73 -n  {outdir}/{project} -t {ibam}  2>&1 | tee {olog} &" ##pairend, no need for shift
+          - "-f BAM -g mm -p 1e-5 --keep-dup all -n  {outdir}/{project} -t {ibam}  2>&1 | tee {olog} &" ##pairend, no need for shift
       outparams:
         opeaks: "{outdir}/{project}_peaks.bed"
         opeakbed: "{outdir}/{project}_peaks.bed"
@@ -217,7 +211,7 @@ DEFAULT:
         opeakbed: "{outdir}/{project}/{project}_peaks.macs2.bed"
       params:
         blank: 
-          - " -f BAM --SPMR -g hs -B -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project} --outdir  {outdir}/{project} -t {ibam} "
+          - " -f BAM --SPMR -g mm -B -q 0.05 --keep-dup all -n {project} --outdir  {outdir}/{project} -t {ibam} "
           - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
           - " 2>&1 | tee {olog} &"
       outparams:
@@ -239,7 +233,7 @@ DEFAULT:
       variables:
         obw: "{outdir}/{project}.bw"
         db: *DB
-        chromSize: "{db}/hg38_main.chrom.sizes"
+        chromSize: "{db}/mm10_main.chrom.sizes"
       params:
         blank: 
           - "sort -k1,1 -k2,2n {ibdg} > {ibdg}.tmp "
@@ -262,7 +256,7 @@ DEFAULT:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_fc.sh"
         db: *DB
-        chromSize: "{db}/hg38_main.chrom.sizes"
+        chromSize: "{db}/mm10_main.chrom.sizes"
         obw: "{outdir}/{project}.fc.bw"
       params:
         blank:
@@ -288,11 +282,11 @@ DEFAULT:
         oname: "{outdir}/{project}/{project}"
         bisize: 2000
         db: *DB
-        chromsize: "{db}/hg38_main.chrom.sizes"
+        chromsize: "{db}/mm10_main.chrom.sizes"
       functions:
         - "mkdirs('{outdir}/{project}')"
       params:
-        -g: "{db}/hg38.refGene.main.sqlite3"
+        -g: "{db}/mm10.refGene.main.sqlite3"
         -l: "{chromsize}"
         --dump: " "
         --bg: " "
@@ -342,7 +336,7 @@ DEFAULT:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_summary_bed.py"
         db: *DB
-        bed: "{db}/hg38.refGene.main.promoter_2k.bed"
+        bed: "{db}/mm10.refGene.main.promoter_2k.bed"
         osummary: "{outdir}/{project}.summary"
       params:
         blank:
@@ -363,7 +357,7 @@ DEFAULT:
         scripts_dir: *SCRIPTS
         script: "{scripts_dir}/bw_summary_bed_bins.py"
         db: *DB
-        bed: "{db}/hg38.refGene.main.bed"
+        bed: "{db}/mm10.refGene.main.bed"
         oname: "{outdir}/{project}.tsv"
 
       params:
@@ -466,7 +460,7 @@ broad:
   cmd_fusion_order: ['1', 2,3,"STAT"]
   cmd_name: chiseq.cmd.txt
   log_name: log
-  outdir : dataset
+  outdir : 1.byReplicates
   data_name: data.yaml
   order:
     - get_fq
@@ -479,10 +473,7 @@ broad:
     - peakcalling2
     - toBwfrompeakcalling
     - bwfc
-    - ceas
     - frip_cal
-    - bw_summary
-    - metagene
   
   order_stat: 
     - stat_log
@@ -504,7 +495,7 @@ broad:
         opeakbed: "{outdir}/{project}/{project}_peaks.bed"
       params:
         blank: 
-          - " -f BAM --SPMR -g hs -B -q 0.05 --keep-dup 1 --broad --nomodel --extsize 147 -n {project} --outdir  {outdir}/{project} -t {ibam} "
+          - " -f BAM --SPMR -g mm -B -q 0.05 --keep-dup 1 --broad --nomodel --extsize 147 -n {project} --outdir  {outdir}/{project} -t {ibam} "
           - " 2>&1 | tee {olog} &"
       outparams:
         opeaks: "{outdir}/{project}/{project}_peaks.broadPeak"

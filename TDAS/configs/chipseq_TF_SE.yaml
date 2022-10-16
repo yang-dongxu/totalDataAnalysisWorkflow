@@ -3,7 +3,7 @@ env_variables:
   - &SCRIPTS "${{SCRIPTS}}"
 
 seq_info_format:
-- " "
+- ";"
 - project
 - seq1
 #- seq_order
