@@ -262,6 +262,30 @@ DEFAULT:
           - "bash {script} {ibw} {chromSize} {obw}"
       outparams:
         obw: "{obw}"
+
+    frip_cal:
+      need: true
+      cmd_part: 2
+      path: " "
+      outdir: "4.peakcalling/{project}"
+      father: 
+        ipeaks:
+          - peakcalling2
+          - opeaks
+        ibam:
+          - sort_and_markdup
+          - obam
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/peak_stat.py"
+        oname: "{outdir}/{project}.{part}.stat"
+      params:
+        blank:
+          - "python {script} {ipeaks} {ibam} {oname} &" 
+      outparams:
+        oname: "{oname}"
+    
+
   stat: 
     stat_log:
       need: true 
