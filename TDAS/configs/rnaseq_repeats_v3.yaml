@@ -1,0 +1,289 @@
+seq_info_format:
+- ';'
+- project
+- idir
+- seq1
+- seq2
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids:
+  - DEFAULT
+
+env_variables:
+  - &DB "${{DB}}/hg38"
+  - &SCRIPTS "${{SCRIPTS}}"
+DEFAULT:
+  cmd_fusion_order: ['1',"2","3","STAT"]
+  cmd_name:  rnaseq_repeats.cmd.txt
+  log_name: log
+  data_name: data.yaml
+  order:
+    - get_fq
+    - trim_pe
+    - STAR
+    - bam_interface
+    - homer_directory
+    - homer_counts_subfamily
+    - homer_counts
+    - normalize_homer_counts
+    - normalize_homer_counts_subfamily
+  order_stat: 
+    - stat_combine_expression
+  outdir: "4.rnaseq_repeats"
+  workflow:
+
+    get_fq:
+      need: true
+      cmd_part: "1"
+      outdir: "1.raw_data"
+      father:
+        idir:
+          - raw
+          - idir
+        seq1:
+          - raw
+          - seq1
+        seq2:
+          - raw
+          - seq2
+      variables:
+        oseq1: "{outdir}/{project}.R1.fq.gz"
+        oseq2: "{outdir}/{project}.R2.fq.gz"
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
+          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+
+   
+    trim_pe:
+      path: " "
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - get_fq
+        - oseq1
+        iseq2:
+        - get_fq
+        - oseq2
+      need: true
+      outdir: 1.trimed
+      variables:
+        log: "{outdir}/{project}.{part}.log"
+        oseq1: "{outdir}/{project}.trimed.R1.fq.gz"
+        oseq2: "{outdir}/{project}.trimed.R2.fq.gz"
+        json: "{outdir}/{project}.report.fastp.json"
+        html: "{outdir}/{project}.report.fastp.html"
+        threads: 4 # pe, each fastq will use threads seperately
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+        json: "{json}"
+      params:
+        blank:
+          - "fastp -i {iseq1} -I {iseq2} -o {oseq1} -O {oseq2} -e 20 -j {json} -h {html} -p -R '{project}' -w {threads} -D"
+          # e: average error rage
+          # p: over expressed seq analyze 
+          # R: title of report
+          # D: deduplicate
+          - " 2>&1 | tee {log}  "
+          - "&& rm {iseq1} {iseq2}"
+
+
+    STAR:
+      check_paths: []
+      cmd_part: '1'
+      path: STAR
+      need: true
+      outdir: 2.star
+      functions:
+        - 'mkdirs("{outdir}/{project}")'
+      father:
+        iseq1:
+        - trim_pe
+        - oseq1
+        iseq2:
+        - trim_pe
+        - oseq2
+      variables: 
+        db: *DB
+        genome: "{db}/star/main"
+      params:
+        --genomeDir:  "{genome}"
+        --outFileNamePrefix: '{outdir}/{project}/{project}_'
+        --outFilterMultimapNmax: '500'
+        --outFilterMismatchNmax: "3"
+        --outSAMattributes: NH HI NM MD XS AS
+        --outSAMtype: BAM SortedByCoordinate
+        --readFilesCommand: zcat
+        --readFilesIn: '{iseq1}  {iseq2}'
+        --runThreadN: '10'
+      outparams:
+        obam_sorted: "{outdir}/{project}/{project}_Aligned.sortedByCoord.out.bam"
+
+    
+    bam_interface:
+      need: true
+      path: " "
+      outdir: "2.star"
+
+      father:
+        obam:
+          - STAR
+          - obam_sorted
+
+      outparams:
+        obam: "{obam}"
+      
+    homer_directory:
+      need: true
+      cmd_part: "1"
+      path: "makeTagDirectory"
+      outdir: "3.homer/{project}"
+      variables:
+        olog: "{outdir}/{project}.homer.log"
+        oname: "{outdir}/tags"
+      father:
+        ibam:
+          - bam_interface
+          - obam
+      params:
+        blank:
+          - "{oname} {ibam} -keepOne > {olog}"
+
+      outparams:
+        oname: "{oname}"
+        olog: "{olog}"
+
+    homer_counts_subfamily:
+      need: true
+      cmd_part: "2"
+      outdir: "3.homer/{project}"
+      path: "analyzeRepeats.pl repeats hg38"
+      father:
+        iname:
+          - homer_directory
+          - oname
+        olog:
+          - homer_directory
+          - olog
+
+      variables:
+        ocount: "{outdir}/{project}.subfamily.count"
+      params:
+        -d: "{iname}"
+        -count: "exons" 
+        blank:
+          - "1>{ocount} "
+          - " 2>>{olog} "
+          - " & "
+      outparams:
+        ocount: "{ocount}"
+        olog: "{olog}"
+
+    homer_counts:
+      need: true
+      cmd_part: "2"
+      outdir: "3.homer/{project}"
+      path: "analyzeRepeats.pl repeats hg38"
+      father:
+        iname:
+          - homer_directory
+          - oname
+        olog:
+          - homer_directory
+          - olog
+      variables:
+        ocount: "{outdir}/{project}.transcript.count"
+
+      params:
+        -d: "{iname}"
+        -count: "exons" 
+        -noCondensing: ""
+        blank:
+          - "1>{ocount} "
+          - " 2>>{olog} "
+          - " & "
+      outparams:
+        ocount: "{ocount}"
+        olog: "{olog}"
+
+    normalize_homer_counts:
+      need: true
+      cmd_part: "3"
+      outdir: "3.homer/{project}"
+
+      father:
+        icount: 
+          - homer_counts
+          - ocount
+      variables:
+        oname: "{outdir}/{project}.transcript.expression.tsv"
+        script_path: *SCRIPTS
+        homer_normalize: "{script_path}/normalize_homer_counts_v2.py"
+        db: *DB
+        annotation: "{db}/hg38.repeats.main.transcript.bed "
+      params:
+        blank:
+          - "wait && python {homer_normalize} insertion  {icount} {annotation} > {oname}"
+      outparams:
+        oname: "{oname}"
+
+    normalize_homer_counts_subfamily:
+      need: true
+      cmd_part: "3"
+      outdir: "3.homer/{project}"
+
+      father:
+        icount: 
+          - homer_counts_subfamily
+          - ocount
+      variables:
+        oname: "{outdir}/{project}.subfamily.expression.tsv"
+        script_path: *SCRIPTS
+        homer_normalize: "{script_path}/normalize_homer_counts_v2.py"
+        db: *DB
+        annotation: "{db}/hg38.repeats.main.transcript.bed "
+      params:
+        blank:
+          - "python {homer_normalize} subfamily {icount} > {oname}"
+      outparams:
+        oname: "{oname}"
+      
+    
+
+  stat: 
+    stat_combine_expression:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        expressions:
+          - normalize_homer_counts
+          - oname
+          - ","
+        expressions_subfamily:
+          - normalize_homer_counts_subfamily
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        scripts_dir: *SCRIPTS
+        scripts_vstackfiles: "python {scripts_dir}/tableStack.py vstack "
+        oname_transcript: "{outdir}/transcript.expression_normalized.tsv"
+        oname_subfamily: "{outdir}/subfamily.expression_normalized.tsv"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} -t {expressions} -p {projects} -o {oname_transcript}"
+          - "&& {scripts_vstackfiles} -t {expressions_subfamily} -p {projects} -o {oname_subfamily}"
