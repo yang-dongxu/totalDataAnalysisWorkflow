@@ -156,7 +156,7 @@ DEFAULT:
           - obam
       params:
         blank:
-          - "{oname} {ibam} -keepOne > {olog}"
+          - "{oname} {ibam} -keepOne > {olog} &"
 
       outparams:
         oname: "{oname}"
@@ -167,6 +167,7 @@ DEFAULT:
       cmd_part: "2"
       outdir: "3.homer/{project}"
       path: "analyzeRepeats.pl repeats hg38"
+      overwrite_check: ["{ocount}"]
       father:
         iname:
           - homer_directory
@@ -181,9 +182,7 @@ DEFAULT:
         -d: "{iname}"
         -count: "exons" 
         blank:
-          - "1>{ocount} "
-          - " 2>>{olog} "
-          - " & "
+          - "1>{ocount} 2>>{olog} & "
       outparams:
         ocount: "{ocount}"
         olog: "{olog}"
@@ -202,7 +201,7 @@ DEFAULT:
           - olog
       variables:
         ocount: "{outdir}/{project}.transcript.count"
-
+      overwrite_check: ["{ocount}"]
       params:
         -d: "{iname}"
         -count: "exons" 
