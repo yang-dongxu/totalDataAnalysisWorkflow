@@ -1,0 +1,402 @@
+env_variables:
+  - &DB "${{DB}}/hg19"
+  - &SCRIPTS "${{SCRIPTS}}"
+
+
+seq_info_format:
+- ';'
+- project
+- idir
+- seq1
+- seq2
+#- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+  - last
+config_ids: 
+  - DEFAULT
+DEFAULT:
+  cmd_fusion_order: ['1','2',"STAT"]
+  cmd_name: cmd
+  log_name: log
+  data_name: data.yaml
+  order:
+    - get_fq
+    - trim_pe
+    - STAR
+    - read_distribute
+    - toBwfrombam
+    - stringtie
+    - stringtie_format
+    - featureCounts
+    - featureCounts_transcript
+  order_stat: 
+    - stat_log
+    - combine_stringtie_out
+    - combine_featurecounts
+    - combine_featurecounts_transcript
+  outdir: rnaseqout
+
+  workflow:
+    get_fq:
+      need: true
+      cmd_part: "1"
+      outdir: "RNASeq_out"
+      father:
+        idir:
+          - raw
+          - idir
+        seq1:
+          - raw
+          - seq1
+        seq2:
+          - raw
+          - seq2
+      variables:
+        oseq1: "{outdir}/{project}.R1.fq.gz"
+        oseq2: "{outdir}/{project}.R2.fq.gz"
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
+          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+
+   
+    trim_pe:
+      path: " "
+      overwrite_check: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - get_fq
+        - oseq1
+        iseq2:
+        - get_fq
+        - oseq2
+      need: true
+      outdir: 1.trimed
+      variables:
+        log: "{outdir}/{project}.{part}.log"
+        oseq1: "{outdir}/{project}.trimed.R1.fq.gz"
+        oseq2: "{outdir}/{project}.trimed.R2.fq.gz"
+        json: "{outdir}/{project}.report.fastp.json"
+        html: "{outdir}/{project}.report.fastp.html"
+        threads: 4 # pe, each fastq will use threads seperately
+      outparams:
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+        json: "{json}"
+      params:
+        blank:
+          - "fastp -i {iseq1} -I {iseq2} -o {oseq1} -O {oseq2} -e 20 -j {json} -h {html} -p -R '{project}' -w {threads} -D"
+          # e: average error rage
+          # p: over expressed seq analyze 
+          # R: title of report
+          # D: deduplicate
+          - " 2>&1 | tee {log}  "
+          - "&& rm {iseq1} {iseq2}"
+
+    STAR:
+      need: true
+      outdir: "2.star/{project}"      
+      path: STAR
+      check_paths: []
+      cmd_part: '1'
+      father:
+        iseq1:
+        - trim_pe
+        - oseq1
+        iseq2:
+        - trim_pe
+        - oseq2
+      variables:
+        outprefix: "{outdir}/{project}_"
+        db: *DB
+        genomedir: "{db}/star/main"
+      outparams:
+        obam_sorted: "{outprefix}Aligned.sortedByCoord.out.bam"
+        olog: "{outprefix}Log.final.out"
+        ologout: "{outprefix}Log.out"
+        ologprogressout: "{outprefix}Log.progress.out"
+        osj: "{outprefix}SJ.out.tab"
+      params:
+        --genomeDir: "{genomedir}"
+        --outFileNamePrefix: '{outprefix}'
+        --outFilterMultimapNmax: '10' ## default value, for repeats, set this num to 500
+        --outSAMattributes: NH HI NM MD XS AS
+        --outSAMtype: BAM SortedByCoordinate
+        --readFilesCommand: zcat
+        --readFilesIn: '{iseq1}  {iseq2}'
+        --runThreadN: '10'
+    
+    read_distribute:
+      need: true
+      path: "read_distribution.py"
+      outdir: "3.reads_distribution"
+      father:
+        ibam:
+          - STAR
+          - obam_sorted
+      variables:
+        oname: "{outdir}/{project}.reads_distribution"
+        db: *DB
+        ref: "{db}/hg19.refGene.main.bed"
+      outparams:
+        oname: "{oname}"
+      params:
+        "-i" : "{ibam}"
+        "-r" : "{ref}"
+        ">" : "{oname}"
+        blank:
+          - " & "
+
+    toBwfrombam:
+      need: true
+      path: " "
+      outdir: "4.bw"
+      cmd_part: '2'
+      father: 
+        ibam:
+          - STAR
+          - obam_sorted
+      variables:
+        obw: "{outdir}/{project}.bw"
+      params:
+        blank:
+          - "samtools index -b -@ 10 {ibam}  {ibam}.bai "
+          - "&& bamCoverage --samFlagExclude 12 --normalizeUsing  RPKM -b {ibam} -o {obw} -p 10 "
+      outparams:
+        obw: "{obw}"
+
+    stringtie:
+      need: true
+      path: " "
+      outdir: "5.counts/{project}"
+      cmd_part: "1"
+      father:
+        ibam:
+          - STAR
+          - obam_sorted
+
+      variables:
+        db: *DB
+        gtf: "{db}/hg19.refGene.main.gtf"
+        threads: 8
+        ocount: "{outdir}/{project}.stringtie.count.tsv"
+        ogtf: "{outdir}/{project}.stringtie.cov.gtf"
+        obal: "{outdir}/{project}_Ballgown"
+        olog: "{outdir}/{project}.stringtie.log"
+      functions:
+        - mkdirs("{outdir}")
+
+      params:
+        blank:
+          - "stringtie {ibam} -p {threads} -G {gtf} -l {project} -A {ocount} -o {ogtf} -e -b {obal} "
+          - "2>&1 | tee {olog}"
+      outparams:
+        ocount: "{ocount}"
+        ogtf: "{ogtf}"
+        obaldir: "{obal}"
+        olog: "{olog}"
+
+    stringtie_format:
+      need: true
+      path: " "
+      outdir: "5.counts/{project}"
+      cmd_part: "1"
+      father:
+        igtf:
+          - stringtie
+          - ogtf
+      variables:
+        oname: "{outdir}/{project}.stringtie.transcript.count.tsv"
+        script_dir: *SCRIPTS
+        script: "{script_dir}/gtf_to_table.py"
+      params:
+        blank:
+          - "python {script} {igtf} -l 1000 -o {oname}"
+      outparams:
+        oname: "{oname}"
+
+    
+    featureCounts:
+      need: true
+      path: " "
+      outdir: 5.counts
+      check_paths: []
+      cmd_part: '1'
+      father:
+        ibam:
+        - STAR
+        - obam_sorted
+      functions:
+        - mkdirs("{outputpath}")
+
+      variables:
+        db: *DB
+        gtf: "{db}/hg19.refGene.main.gtf"
+        outputpath: '{outdir}/{project}'
+        oname: "{outputpath}/{project}_featurecounts.tsv"
+        olog: "{outputpath}/{project}.{part}.log"
+        threads: 8
+      outparams:
+        oname: '{oname}'
+      params:
+        blank:
+          - " featureCounts --fraction --fracOverlap 0.1 -B -M -O -T {threads} -a {gtf} -g gene_id -o {oname} 2>&1  {ibam} | tee {olog} " 
+          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
+
+    featureCounts_transcript:
+      need: true
+      path: " "
+      outdir: 5.counts
+      check_paths: []
+      cmd_part: '1'
+      father:
+        ibam:
+        - STAR
+        - obam_sorted
+      functions:
+        - mkdirs("{outputpath}")
+
+      variables:
+        db: *DB
+        gtf: "{db}/hg19.refGene.main.gtf"
+        outputpath: '{outdir}/{project}'
+        oname: "{outputpath}/{project}_featurecounts.transcript.tsv"
+        olog: "{outputpath}/{project}.{part}.log"
+        threads: 8
+      outparams:
+        oname: '{oname}'
+      params:
+        blank:
+          - " featureCounts --fraction --fracOverlap 0.1 -B -M -O -T {threads} -a {gtf} -g transcript_id -o {oname} 2>&1  {ibam} | tee {olog} " 
+          - "&& sed -i {oname} -e '2d' -e '1afeature\tChr\tStart\tEnd\tStrand\tLength\tReads'  "
+
+
+  stat:
+    stat_log:
+      need: true 
+      outdir: "0.stat"
+      path: ""
+      iparams_list:
+        star:
+          - STAR
+          - olog
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+        readDistribute:
+          - read_distribute
+          - oname
+          - ","
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.stats"
+      params:
+        "python" : "{script}"
+        "-s": "{star}"
+        "-r": "{readDistribute}"
+        "-p": "{projects}"
+        "-o": "{oname}"
+      outparams:
+        oname: "oname"
+      
+
+    combine_stringtie_out:
+      need: true
+      path: ""
+      outdir: "0.stat"
+      iparams_list:
+        intensities:
+          - stringtie_format
+          - oname
+          - ","
+        intensities_gene:
+          - stringtie
+          - ocount
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        script_dir: *SCRIPTS
+        scripts_vstackfiles: "{script_dir}/tableStack.py vstack "
+        oname: "{outdir}/stringtie.transcript.exp.stat.tsv"
+        oname_gene: "{outdir}/stringtie.gene.exp.stat.tsv"
+
+      params:
+        blank:
+          - "python {scripts_vstackfiles} -t {intensities} -p {projects} -o {oname} --comment nome --header 0"
+          - "&& python {scripts_vstackfiles} -t {intensities_gene} -p {projects} -o {oname_gene} --comment nome --header 0"
+
+
+    combine_featurecounts:
+      need: true 
+      path: ""
+      outdir: "0.stat"
+      iparams_list:
+        intensities:
+          - featureCounts
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        method: "FPKM"
+        oname_reads_raw: "{outdir}/featurecounts.reads.raw.tsv"
+        oname_reads: "{outdir}/feacounts.reads.stat.tsv"
+        oname_intensity: "{outdir}/featurecounts.gene.{method}.tsv"
+        script_dir: *SCRIPTS
+        scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
+        scripts_normalize: "python {script_dir}/normaliseRNA_featureCounts.py"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads_raw} "
+          - "&& {scripts_normalize} {method} {oname_reads_raw} {oname_intensity} project "
+          - "&& cat {oname_reads_raw} | cut -f 1,6-8 > {oname_reads}  "
+          - "&& rm {oname_reads_raw} "
+
+    combine_featurecounts_transcript:
+      need: true 
+      path: ""
+      outdir: "0.stat"
+      iparams_list:
+        intensities:
+          - featureCounts_transcript
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        method: "FPKM"
+        oname_reads_raw: "{outdir}/featurecounts.reads.raw.tsv"
+        oname_reads: "{outdir}/feacounts.transcript.reads.stat.tsv"
+        oname_intensity: "{outdir}/featurecounts.gene.{method}.tsv"
+        script_dir: *SCRIPTS
+        scripts_vstackfiles: "python {script_dir}/tableStack.py vstack "
+        scripts_normalize: "python {script_dir}/normaliseRNA_featureCounts.py"
+      
+      params:
+        blank:
+          - "{scripts_vstackfiles} -t {intensities} -p {projects} -o {oname_reads_raw} "
+          - "&& {scripts_normalize} {method} {oname_reads_raw} {oname_intensity} project "
+          - "&& cat {oname_reads_raw} | cut -f 1,6-8 > {oname_reads}  "
+          - "&& rm {oname_reads_raw} "
+
+
