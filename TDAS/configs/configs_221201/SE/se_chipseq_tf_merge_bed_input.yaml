@@ -59,7 +59,7 @@ DEFAULT:
       params:
         blank:
           - "cd {idir} "
-          - "&& echo {ibeds} | tr , ' ' | cat |  sort -k1,1 -k2,2n > {obed}  & "
+          - "&& echo {ibeds} | tr , ' ' |xargs cat |  sort -k1,1 -k2,2n > {obed}  & "
 
       outparams:
         obed: "{obed}"
@@ -82,7 +82,7 @@ DEFAULT:
       params: 
         blank:
           - "cd {idir} "
-          - "&& echo {inputs} | tr , ' ' |  cat |  sort -k1,1 -k2,2n > {obed} & "
+          - "&& echo {inputs} | tr , ' ' |xargs  cat |  sort -k1,1 -k2,2n > {obed} & "
 
       outparams:
         oinput: "{obed}"
@@ -105,7 +105,6 @@ DEFAULT:
         blank:
           - "-f BED -g mm -p 1e-5 --keep-dup all -n {outdir}/{project}.macs14 -t {ibed} -c {input} "
           - "2>&1 | tee {olog} "
-          - "&& mv {outdir}/{project}_summits.bed {osummits}"
       outparams:
         opeaks: "{outdir}/{project}_peaks.macs14.bed"
         opeakbed: "{outdir}/{project}.macs14_peaks.bed"
@@ -138,7 +137,7 @@ DEFAULT:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
         osummits: "{osummits}"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        obdg: "{outdir}/{project}/{project}.macs2_treat_pileup.bdg"
         olog: "{olog}"
     
     toBwfrompeakcalling:

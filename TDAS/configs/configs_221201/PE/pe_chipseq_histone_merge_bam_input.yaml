@@ -133,20 +133,20 @@ DEFAULT:
           - oinput
       cmd_part: 2
       variables:
-        olog: "{outdir}/{project}/{project}_macs2.log"
-        opeaks: "{outdir}/{project}/{project}_macs2_peaks.narrowPeak"
-        opeakbed: "{outdir}/{project}/{project}_macs2_peaks.macs2.bed"
-        osummits: "{outdir}/{project}/{project}_macs2_summits.macs2.bed"
+        olog: "{outdir}/{project}/{project}.macs2_narrow.log"
+        opeaks: "{outdir}/{project}/{project}.macs2_narrow_peaks.narrowPeak"
+        opeakbed: "{outdir}/{project}/{project}.macs2_narrow_peaks.bed"
+        osummits: "{outdir}/{project}/{project}.macs2_narrow_summits.bed"
       params:
         blank: 
-          - " -f BEDPE -g mm -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project}_macs2 --outdir  {outdir}/{project} -t {ibed} -c {input} "
+          - " -f BEDPE -g mm -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project}.macs2_narrow --outdir  {outdir}/{project} -t {ibed} -c {input} "
           - " 2>&1 | tee {olog} &"
     
       outparams:
-        opeaks: "{outdir}/{project}/{project}_macs2_peaks.narrowPeak"
+        opeaks: "{outdir}/{project}/{project}.macs2_narrow_peaks.narrowPeak"
         opeakbed: "{opeakbed}"
         osummits: "{osummits}"
-        obdg: "{outdir}/{project}/{project}_macs2_treat_pileup.bdg"
+        obdg: "{outdir}/{project}/{project}.macs2_narrow_treat_pileup.bdg"
         olog: "{olog}"
     
 
@@ -162,24 +162,23 @@ DEFAULT:
           - merge_input
           - oinput
       cmd_part: 2
-      overwrite_check: ["{opeaks}"]
       variables:
-        olog: "{outdir}/{project}/{project}_macs2.log"
-        opeaks: "{outdir}/{project}/{project}_macs2_peaks.broadPeak"
-        opeakbed: "{outdir}/{project}/{project}_macs2_peaks.macs2.bed"
-        osummits: "{outdir}/{project}/{project}_macs2_summits.macs2.bed"
+        olog: "{outdir}/{project}/{project}.macs2_broad.log"
+        opeaks: "{outdir}/{project}/{project}.macs2_broad_peaks.broadPeak"
+        opeakbed: "{outdir}/{project}/{project}.macs2_broad_peaks.bed"
+        osummits: "{outdir}/{project}/{project}.macs2_broad_summits.bed"
       params:
         blank: 
-          - " -f BEDPE --SPMR -g mm -B -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project}_macs2 --outdir  {outdir}/{project} -t {ibed} -c {input} --broad"
+          - " -f BEDPE -g mm -q 0.05 --keep-dup 1 --nomodel --extsize 147 -n {project}.macs2_broad --outdir  {outdir}/{project} -t {ibed} -c {input} "
           - " 2>&1 | tee {olog} &"
     
       outparams:
-        opeaks: "{outdir}/{project}/{project}_macs2_peaks.broadPeak"
+        opeaks: "{outdir}/{project}/{project}.macs2_broad_peaks.broadPeak"
         opeakbed: "{opeakbed}"
         osummits: "{osummits}"
-        obdg: "{outdir}/{project}/{project}_macs2_treat_pileup.bdg"
+        obdg: "{outdir}/{project}/{project}.macs2_broad_treat_pileup.bdg"
         olog: "{olog}"
-    
+     
     toBwfrompeakcalling:
       need: true
       path: " "

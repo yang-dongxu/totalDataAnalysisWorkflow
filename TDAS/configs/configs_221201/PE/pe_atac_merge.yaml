@@ -22,9 +22,9 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: atac_pe.cmd.txt
+  cmd_name: pe_atac_merge.cmd.txt
   log_name: log
-  outdir : atac_pe
+  outdir : 2.mergedSamples
   data_name: data.yaml
   order:
     - get_fq

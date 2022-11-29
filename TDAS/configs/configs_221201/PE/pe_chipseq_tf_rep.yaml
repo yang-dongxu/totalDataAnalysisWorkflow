@@ -217,8 +217,8 @@ DEFAULT:
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}/{project}_summits.macs2.bed"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.macs2.bdg"
+        osummits: "{outdir}/{project}/{project}.macs2_summits.bed"
+        obdg: "{outdir}/{project}/{project}.macs2_treat_pileup.bdg"
         olog: "{olog}"
     
     toBwfrompeakcalling:

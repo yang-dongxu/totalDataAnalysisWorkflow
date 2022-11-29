@@ -146,7 +146,7 @@ DEFAULT:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
         osummits: "{osummits}"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.bdg"
+        obdg: "{outdir}/{project}/{project}.macs2_treat_pileup.bdg"
         olog: "{olog}"
     
     toBwfrompeakcalling:

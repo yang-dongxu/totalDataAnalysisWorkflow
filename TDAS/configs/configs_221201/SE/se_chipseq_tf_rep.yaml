@@ -20,7 +20,7 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: se_dnase_rep.cmd.txt
+  cmd_name: se_chip_rep.cmd.txt
   log_name: log
   outdir : 1.byReplicates
   data_name: data.yaml
@@ -216,8 +216,8 @@ DEFAULT:
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}/{project}_summits.macs2.bed"
-        obdg: "{outdir}/{project}/{project}_treat_pileup.macs2.bdg"
+        osummits: "{outdir}/{project}/{project}.macs2_summits.bed"
+        obdg: "{outdir}/{project}/{project}.macs2_treat_pileup.bdg"
         olog: "{olog}"
 
     toBwfrompeakcalling:

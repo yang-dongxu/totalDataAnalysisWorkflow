@@ -222,18 +222,18 @@ DEFAULT:
       variables:
         olog: "{outdir}/{project}.macs2.log"
         opeaks: "{outdir}/{project}.macs2_peaks.narrowPeak"
-        opeakbed: "{outdir}/{project}_macs2_peaks.bed"
+        opeakbed: "{outdir}/{project}.macs2_peaks.bed"
       params:
         blank:
-          - "macs2 callpeak -f BAM --SPMR -g mm -B -q 0.05 --nomodel --extsize 147 --keep-dup all -n {project}_macs2 --outdir {outdir} -t {ibam} "
+          - "macs2 callpeak -f BAM --SPMR -g mm -B -q 0.05 --nomodel --extsize 147 --keep-dup all -n {project}.macs2 --outdir {outdir} -t {ibam} "
           - "2>&1 | tee {olog} "
           - "&& cat {opeaks} | cut -f 1-5 > {opeakbed} &"
     
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}_macs2_summits.bed"
-        obdg: "{outdir}/{project}_macs2_treat_pileup.bdg"
+        osummits: "{outdir}/{project}.macs2_summits.bed"
+        obdg: "{outdir}/{project}.macs2_treat_pileup.bdg"
         olog: "{olog}"
     
     toBwfrompeakcalling:

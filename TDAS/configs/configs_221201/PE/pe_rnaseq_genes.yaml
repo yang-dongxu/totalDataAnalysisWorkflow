@@ -39,7 +39,7 @@ DEFAULT:
     - combine_stringtie_out
     - combine_featurecounts
     - combine_featurecounts_transcript
-  outdir: rnaseqout
+  outdir: 1.rnaseqForGenes
 
   workflow:
     get_fq:

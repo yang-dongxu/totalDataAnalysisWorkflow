@@ -33,7 +33,7 @@ DEFAULT:
     - normalize_homer_counts_subfamily
   order_stat: 
     - stat_combine_expression
-  outdir: "4.rnaseq_repeats"
+  outdir: "2.rnaseqForRepeats"
   workflow:
 
     get_fq:
