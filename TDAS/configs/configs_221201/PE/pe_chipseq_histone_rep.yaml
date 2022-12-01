@@ -8,8 +8,8 @@ seq_info_format:
 - idir
 - seq1
 - seq2
-#- seq_order
-- config_id
+# - seq_order
+# - config_id
 seq_order:
   - 1
   - 2
@@ -21,9 +21,9 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chiseq.cmd.txt
+  cmd_name: pe_chiseq_histone.cmd.txt
   log_name: log
-  outdir : dataset
+  outdir : 1.byReplicates
   data_name: data.yaml
   order:
     - get_fq
@@ -255,7 +255,7 @@ DEFAULT:
         chromSize: "{db}/mm10_main.chrom.sizes"
       params:
         blank: 
-          - "sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b" | bedClip stdin {chromSize} {ibdg}.tmp  "
+          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b" | bedClip stdin {chromSize} {ibdg}.tmp  '
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
           - "&& rm -f  {ibdg}.tmp "
       outparams:

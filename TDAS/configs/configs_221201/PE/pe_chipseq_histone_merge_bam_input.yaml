@@ -20,9 +20,9 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chipseq_merge.cmd.txt
+  cmd_name: pe_chipseq_merge.cmd.txt
   log_name: log
-  outdir : 2.chipseqout_merge
+  outdir : 2.mergedSamples
   data_name: data.yaml
   order:
     - merge
