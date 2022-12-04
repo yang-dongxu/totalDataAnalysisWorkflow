@@ -128,8 +128,8 @@ DEFAULT:
       params:
         blank: 
           - " -f BED --SPMR -g mm -B -q 0.05 --keep-dup all --nomodel --extsize 147 -n {project}.macs2_narrow --outdir  {outdir}/{project} -t {ibed} -c {input} "
-          - "cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
-          - " 2>&1 | tee {olog} &"
+          - " 2>&1 | tee {olog} "
+          - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
@@ -157,8 +157,8 @@ DEFAULT:
       params:
         blank: 
           - " -f BED --SPMR -g mm -B -q 0.05 --keep-dup all --nomodel --extsize 147 -n {project}.macs2_broad --outdir  {outdir}/{project} -t {ibed} -c {input} "
-          - "cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
-          - " 2>&1 | tee {olog} &"
+          - " 2>&1 | tee {olog} "
+          - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"

@@ -218,7 +218,7 @@ DEFAULT:
         ofcbw: "{outdir}/{project}.all.fc.bw"
       params:
         blank: 
-          - "cat {ibed} | awk -v l={thre} 'BEGIN{{OFS=\"\\t\"}}{{mean=int(($2+$3)/2);$2=mean-l/2;$3=mean+l/2;print $0}}' | grep -v chrM > {all_bed} &&"
+          - "cat {ibed} | grep -v chrM  > {all_bed} &&"
           - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup 1  -n {project}.all --outdir  {outdir} -t {all_bed} 2>&1 | tee {olog} && "
           - "echo \"########## macs2 call peak  {project} done \" &&"
           - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp && "
@@ -243,7 +243,7 @@ DEFAULT:
           - obed
       variables:
         ocr_bed: "{outdir}/{project}.ocr.fragment.bed"
-        thre: 140
+        thre: 100
         sp: mm
         obdg: "{outdir}/{project}.ocr_treat_pileup.bdg"
         opeaks: "{outdir}/{project}.ocr_peaks.narrowPeak"
@@ -393,7 +393,7 @@ DEFAULT:
       params:
         blank:
           - "cat {raw_frag} | awk '{{print $3-$2}}' | sort  | uniq -c > {raw_stat} &&"
-          - "cat {nuc_frag} | awk '{{print $3-$2}}' | sort  | uniq -c > {raw_stat} "
+          - "cat {nuc_frag} | awk '{{print $3-$2}}' | sort  | uniq -c > {nuc_stat} "
 
 
   stat: 
