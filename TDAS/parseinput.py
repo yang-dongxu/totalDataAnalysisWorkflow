@@ -16,7 +16,7 @@ def parse_inputfile(config:dict,seqs:str):
     if sep=="":
         sep=None
     f=open(seqinfo_file,'r')
-    part="raw"
+    part=Intermedia.RawPartID
 
     seq_order=1
     for line in f:

@@ -217,7 +217,8 @@ DEFAULT:
         obw: "{outdir}/{project}.fc.bw"
       params:
         blank:
-          - "bash {script} {ibw} {chromSize} {obw}"
+          - "ln -snf {ibw} {outdir}/{project}.bw  "
+          - " && bash {script} {ibw} {chromSize} {obw} &"
       outparams:
         obw: "{obw}"
 

@@ -2,6 +2,7 @@ import logging
 import sys
 import os
 import re
+from copy import deepcopy
 
 from pandas.io.json._normalize import nested_to_record 
 import yaml
@@ -11,6 +12,7 @@ from TDAS.Intermedia import Intermedia
 from TDAS.stats_functions import BlockStat
 from TDAS.working_functions import BlockWork
 from TDAS.spfunctions import SPfucntions,mkdirs
+
 
 # METHOD={
 #     "trim":trim,
@@ -67,7 +69,14 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0,**kwargs):
     for i in Intermedia.get_next_to_process(config):
         project,configid=i
         project_num+=1
-        this_config=config[configid]
+        if configid in config:
+            this_config=config[configid]
+            this_config["__source"] = configid
+        else:
+            this_config = deepcopy(config["DEFAULT"])
+            config[configid] = this_config
+            this_config["__source"] = "DEFAULT"
+            logging.warning("config_id: {} do not exist in config file, using DEFAULT config instead!".format(configid))
         for attr in ["cmd_name","outdir","data_name","cmd_fusion_order","order","order_stat","workflow","stat"]:
             if attr not in this_config:
                 this_config[attr]=config["DEFAULT"][attr]
@@ -117,12 +126,20 @@ def process(config:dict,root_out_dir="",stat=True,threads=8,mode=0,**kwargs):
 
 def stat_process(config:dict,root_out_dir="",threads=8,mode=0,**kwargs):
     for config_id in config.get("config_ids",["DEFAULT"]):
-        this_config=config[config_id]
+        if config_id in config:
+            this_config=config[config_id]
+            # this_config["__source"] = config_id # assigned from above process function
+            print("config_id: {} exist in config file!".format(config_id) )
+        else:
+            this_config = deepcopy(config["DEFAULT"])
+            this_config["__source"] = "DEFAULT"
+            config[config_id] = this_config
+            logging.warning("config_id: {} do not exist in config file, using DEFAULT config instead!".format(config_id))
 
         for attr in ["cmd_name","outdir","data_name","cmd_fusion_order","order","order_stat","workflow","stat"]:
             if attr not in this_config:
                 this_config[attr]=config["DEFAULT"][attr]
-                
+
         if len(root_out_dir)==0:
             outdir=os.path.join(os.getcwd(),this_config["outdir"])
         else:
@@ -141,12 +158,14 @@ def stat_process(config:dict,root_out_dir="",threads=8,mode=0,**kwargs):
         for part in stat_order:
             if "stat" in this_config and part in this_config["stat"]:
                 func_config=this_config["stat"][part]
+                func_config["__source"] = this_config["__source"]
             elif part in config["DEFAULT"]["stat"]:
                 func_config=config["DEFAULT"]["stat"][part]
+                func_config["__source"] = "DEFAULT"
             else:
                 logging.error(f"the part : {part} do not exist in config: {config_id} and DEFAULT! ")
-                sys.exit
-            BlockStat(name=part,outdir=outdir,project="STAT",params=func_config,config_id=config_id,**kwargs)
+                sys.exit(1)
+            BlockStat(name=part,outdir=outdir,project="STAT",params=func_config,config_id=config_id, select_source_id = func_config["__source"],**kwargs)
     #out_bash_cmd(Intermedia.get_cmd_out(config,root_out_dir=outdir),threads=threads)
     if len(root_out_dir)==0:
         outdir=""

@@ -10,6 +10,7 @@ seq_info_format:
 - project
 - idir
 - seq1
+- seq2
 #- seq_order
 #- config_id
 seq_order:
@@ -53,14 +54,21 @@ DEFAULT:
         seq1:
           - raw
           - seq1
+        seq2:
+          - raw
+          - seq2
       variables:
         oseq1: "{outdir}/{project}.R1.fq.gz"
+        oseq2: "{outdir}/{project}.R1.fq.gz"
+
       params:
         blank:
           - "cd {idir} "
           - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
+          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
       outparams:
         oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
 
    
     trim_pe:
@@ -105,7 +113,7 @@ DEFAULT:
       check_paths: []
       cmd_part: '1'
       father:
-        iseq2:
+        iseq1:
           - trim_pe
           - oseq1
         iseq2:

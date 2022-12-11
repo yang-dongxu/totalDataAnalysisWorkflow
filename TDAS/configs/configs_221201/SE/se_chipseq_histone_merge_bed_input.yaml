@@ -133,8 +133,8 @@ DEFAULT:
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}/{project}_macs2_narrow_summits.bed"
-        obdg: "{outdir}/{project}/{project}_macs2_narrow_treat_pileup.bdg"
+        osummits: "{outdir}/{project}/{project}.macs2_narrow_summits.bed"
+        obdg: "{outdir}/{project}/{project}.macs2_narrow_treat_pileup.bdg"
         olog: "{olog}"
 
           
@@ -204,7 +204,8 @@ DEFAULT:
         obw: "{outdir}/{project}.fc.bw"
       params:
         blank:
-          - "bash {script} {ibw} {chromSize} {obw}"
+          - "ln -snf {ibw} {outdir}/{project}.bw  "
+          - " && bash {script} {ibw} {chromSize} {obw}"
       outparams:
         obw: "{obw}"
 

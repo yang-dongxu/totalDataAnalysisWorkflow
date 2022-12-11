@@ -4,6 +4,7 @@ import logging
 
 from TDAS.Intermedia import Intermedia
 from TDAS.basic_functions import *
+from TDAS.utitls import catch_exception_for_Block
 
 def default_func(cls,*args,**kwargs):
     return 0
@@ -63,7 +64,7 @@ class Block:
         
         self.generate_cmd()
 
-    
+    @catch_exception_for_Block
     def process_iparams(self):
         for item,options in self.iparmas.items():
             part=options[0]
@@ -72,38 +73,48 @@ class Block:
             value=Intermedia.get_term(part,project,attribute)
             self.values[item]=value
         return 0
+
+    @catch_exception_for_Block
     def process_variables(self):
         for item,value in self.variables.items():
             new_value=str.format_map(str(value),self.values)
             self.values[item]=new_value
         return 0
 
+    @catch_exception_for_Block
     def process_variables_eval(self):
         for item,value in self.variables_eval.items():
             new_value=eval(str.format_map(str(value),self.values))
             self.values[item]=new_value
         return 0
+    
+    @catch_exception_for_Block
     def process_functions(self):
         for func in self.functions:
             exec(str.format_map(func,self.values))
         return 0
+
+    @catch_exception_for_Block
     def process_outparams(self):
         for item,value in self.outparams.items():
             new_value=str.format_map(value,self.values)
             Intermedia.add_term(self.name,self.project,item,new_value)
         return 0
-
+    @catch_exception_for_Block
     def process_functions_last(self):
         for func in self.functions_last:
             exec(str.format_map(func,self.values))
         return 0
 
+    @catch_exception_for_Block
     def process_checkpath(self):
         for item in self.check_paths:
             path=str.format_map(item,self.values)
             assert isinstance(path,str)
             assert os.path.exists(path.format_map(locals()))
+        return 0
 
+    @catch_exception_for_Block
     def process_overwrite(self,cmd):
         overwrite_opt=self.other_args["all_args"].overwrite ## set in options
         overwrite=self.overwrite ## set in configs
@@ -140,6 +151,7 @@ class Block:
                 return cmd
         return cmd
 
+    @catch_exception_for_Block
     def wrap_cmd(self,cmd:str):
         reptimes=5
         project=self.values["project"]
@@ -166,6 +178,7 @@ class Block:
             ocmd = f"{ocmd} \n"
         return ocmd
     
+    @catch_exception_for_Block
     def generate_cmd(self):
         blank_list=[]
         params_list=[]
