@@ -109,9 +109,13 @@ class Block:
     @catch_exception_for_Block
     def process_checkpath(self):
         for item in self.check_paths:
-            path=str.format_map(item,self.values)
-            assert isinstance(path,str)
-            assert os.path.exists(path.format_map(locals()))
+            try:
+                path=str.format_map(item,self.values)
+                assert isinstance(path,str)
+                assert os.path.exists(path.format_map(locals()))
+            except:
+                raise(FileNotFoundError(f"Path {path} not exists !"))
+                
         return 0
 
     @catch_exception_for_Block
