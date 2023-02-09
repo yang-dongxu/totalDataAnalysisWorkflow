@@ -30,6 +30,7 @@ DEFAULT:
     - trim_pe
     - bowtie2
     - sort_and_markdup
+    - to_fragment
     - peakcalling2
     - toBwfrompeakcalling
     - bwfc
@@ -71,7 +72,7 @@ DEFAULT:
           
     fastqc:
       need: false
-      outdir: 2.trimed
+      outdir: 1.trimed
       path: fastqc
       father:
         iseq1:
@@ -175,6 +176,24 @@ DEFAULT:
       outparams:
         obam: "{cleanbam}"
 
+    to_fragment:
+      need: true
+      path: " "
+      outdir: 3.cleanBam
+      father:
+        ibam:
+          - sort_and_markdup
+          - obam 
+      variables:
+        obed: "{outdir}/{project}.fragment.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bamtobedpe.sh"
+      params:
+        blank:
+          - "bash {script} {ibam} 8 | sort -k1,1 -k2,2n > {obed}"
+      outparams:
+        obed: "{obed}"
+
     peakcalling14:
       need: true 
       path: "macs14 "
@@ -211,9 +230,8 @@ DEFAULT:
         opeakbed: "{outdir}/{project}/{project}_peaks.macs2.bed"
       params:
         blank: 
-          - " -f BAMPE --SPMR -g mm -B -q 0.05 --keep-dup all -n {project}.macs2 --outdir  {outdir}/{project} -t {ibam} "
-          - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
-          - " 2>&1 | tee {olog} &"
+          - " -f BAMPE --SPMR -g mm -B -q 0.05 --keep-dup all -n {project}.macs2 --outdir  {outdir}/{project} -t {ibam} 2>&1 | tee {olog}  "
+          - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} & "
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
@@ -236,7 +254,7 @@ DEFAULT:
         chromSize: "{db}/mm10_main.chrom.sizes"
       params:
         blank: 
-          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b" bedClip stdin {chromSize} {ibdg}.tmp '
+          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b" |  bedClip stdin {chromSize} {ibdg}.tmp '
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
           - "&& rm -f  {ibdg}.tmp &"
       outparams:
@@ -303,7 +321,7 @@ DEFAULT:
       need: true
       cmd_part: 2
       path: " "
-      outdir: "5.peakcalling/{project}"
+      outdir: "4.peakcalling/{project}"
       father: 
         ipeaks:
           - peakcalling2
