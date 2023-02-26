@@ -1,0 +1,441 @@
+env_variables:
+  - &DB "${{DB}}/mm10"
+  - &SCRIPTS "${{SCRIPTS}}"
+
+seq_info_format:
+- ";"
+- project
+- idir
+- ibeds
+- inputs
+#- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids: 
+  - DEFAULT
+
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: cr_merge.pe.cmd.txt
+  log_name: log
+  outdir : 2.mergedSamples
+  data_name: data.yaml
+  order:
+    - merge_bed
+    - merge_inputs
+    - all
+    - ocr
+    - frip_cal_all
+    - frip_cal_ocr
+    - linkbw
+    - frag_len
+
+  order_stat: 
+    - stat_log_all
+    - stat_log_ocr
+    - stat_echo_ocr
+    - stat_echo_all
+
+  
+  workflow:
+
+    merge_bed:
+      need: true 
+      path: ""
+      outdir: "1.merged_bed"
+      father:
+        idir: 
+          - raw
+          - idir
+        ibeds:
+          - raw
+          - ibeds
+      variables:
+        obed: "{outdir}/{project}.bed"
+        threads: 8
+        obed: "{outdir}/{project}.fragment.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bedtobedpe.sh"
+        
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {ibeds} | tr , ' ' | xargs cat | sort -k1,1 -k2,2n >  {obed} "
+      outparams:
+        obed: "{obed}"
+
+
+    merge_input:
+      need: true 
+      path: ""
+      outdir: "1.merged_bed"
+      father:
+        idir: 
+          - raw
+          - idir
+        ibeds:
+          - raw
+          - inputs
+      variables:
+        obed: "{outdir}/{project}.bed"
+        threads: 8
+        obed: "{outdir}/{project}.input.fragment.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bedtobedpe.sh"
+        
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {ibeds} | tr , ' ' | xargs cat | sort -k1,1 -k2,2n >  {obed} "
+      outparams:
+        obed: "{obed}"
+
+    all:
+      need: true 
+      path: " "
+      outdir: "2.allLen/{project}"
+      father: 
+        ibed:
+          - merge_bed
+          - obed
+        input:
+          - merge_input
+          - obed
+      variables:
+        all_bed: "{outdir}/{project}.all.fragment.bed"
+        thre: 250
+        sp: mm
+        obdg: "{outdir}/{project}.all_treat_pileup.bdg"
+        opeaks: "{outdir}/{project}.all_peaks.narrowPeak"
+        olog: "{outdir}/{project}.all.macs2.log"
+        oinputpeak: "{outdir}/{project}.all.input_peaks.narrowPeak"
+        oinputlog: "{outdir}/{project}.all.macs2.input.log"
+        obw: "{outdir}/{project}.all.bw"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_fc.sh"
+        ofcbw: "{outdir}/{project}.all.fc.bw"
+        ofinalPeak: "{outdir}/{project}.all.finalPeak.narrowPeak"
+      params:
+        blank: 
+          - "cat {ibed} | grep -v chrM  > {all_bed} &&"
+          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup all  -n {project}.all --outdir  {outdir} -t {all_bed} 2>&1 | tee {olog} && "
+          - "echo \"########## macs2 call peak  {project}(all, treatment)  done \" &&"
+          - "macs2 callpeak -f BEDPE -g {sp} -q 0.05 --keep-dup all -n {project}.all.input --outdir  {outdir} -t {input} 2>&1 | tee {oinputlog} && "
+          - "echo \"########## macs2 call peak  {project}(all, input) done \" &&"
+          - "bedtools intersect -a <(sort -k1,1 -k2,2n {opeaks}) -b <(sort -k1,1 -k2,2n {oinputpeak}) -v > {ofinalPeak} && "
+          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp && "
+          - "bedGraphToBigWig {obdg}.tmp {chromSize} {obw} && "
+          - "rm -f  {obdg}.tmp &&"
+          - "rm -f {obdg} &&"
+          - "bash {script} {obw} {chromSize} {ofcbw} "
+      outparams:
+        ofrag: "{all_bed}"
+        opeaks: "{opeaks}"
+        ofinalPeak: "{ofinalPeak}"
+        olog: "{olog}"
+        obw: "{obw}"
+        ofcbw: "{ofcbw}"
+
+    ocr: 
+      need: true 
+      path: " "
+      outdir: "3.ocr/{project}"
+      father: 
+        ibed:
+          - merge_bed
+          - obed
+        input:
+          - merge_input
+          - obed
+      variables:
+        ocr_bed: "{outdir}/{project}.ocr.fragment.bed"
+        input_ocr_bed: "{outdir}/{project}.ocr.input.fragment.bed"
+        thre: 120
+        sp: mm
+        obdg: "{outdir}/{project}.ocr_treat_pileup.bdg"
+        opeaks: "{outdir}/{project}.ocr_peaks.narrowPeak"
+        olog: "{outdir}/{project}.ocr.macs2.log"
+        oinputpeak: "{outdir}/{project}.ocr.input_peaks.narrowPeak"
+        oinputlog: "{outdir}/{project}.ocr.macs2.input.log"
+        ofinalPeak: "{outdir}/{project}.ocr.finalPeak.narrowPeak"
+        obw: "{outdir}/{project}.ocr.bw"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bw_fc.sh"
+        ofcbw: "{outdir}/{project}.ocr.fc.bw"
+      params:
+        blank: 
+          - "cat {ibed} | awk '$3-$2 <= {thre}' | grep -v chrM > {ocr_bed} &&"
+          - "cat {input} | awk '$3-$2 <= {thre}' | grep -v chrM > {input_ocr_bed} &&"
+          - "macs2 callpeak -f BEDPE -g {sp} --SPMR -B -q 0.05 --keep-dup all  -n {project}.ocr --outdir  {outdir} -t {ocr_bed} 2>&1 | tee {olog} && "
+          - "echo \"########## macs2 call peak  {project}(ocr, treatment) done \" &&"
+          - "macs2 callpeak -f BEDPE -g {sp} -q 0.05 --keep-dup all -n {project}.ocr.input --outdir  {outdir} -t {input_ocr_bed} 2>&1 | tee {oinputlog} && "
+          - "echo \"########## macs2 call peak  {project}(ocr, input) done \" &&"
+          - "bedtools intersect -a <(sort -k1,1 -k2,2n {opeaks}) -b <(sort -k1,1 -k2,2n {oinputpeak}) -v > {ofinalPeak} && "
+          - "sort -k1,1 -k2,2n {obdg} > {obdg}.tmp && "
+          - "bedGraphToBigWig {obdg}.tmp {chromSize} {obw} && "
+          - "rm -f  {obdg}.tmp &&"
+          - "rm -f {obdg} &&"
+          - "bash {script} {obw} {chromSize} {ofcbw} "
+      outparams:
+        ofrag: "{ocr_bed}"
+        opeaks: "{opeaks}"
+        olog: "{olog}"
+        obw: "{obw}"
+        ofcbw: "{ofcbw}"
+        ofinalPeak: "{ofinalPeak}"
+
+    frip_cal_ocr:
+      need: true
+      cmd_part: 2
+      path: " "
+      outdir: "3.ocr/{project}"
+      father: 
+        ipeaks:
+          - ocr
+          - opeaks
+        ibed:
+          - ocr
+          - ofrag
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/peak_stat.py"
+        oname: "{outdir}/{project}.{part}.stat"
+      params:
+        blank:
+          - "python {script} {ipeaks} {ibed} {oname} &" 
+      outparams:
+        oname: "{oname}"
+
+    frip_cal_all:
+      need: true
+      cmd_part: 2
+      path: " "
+      outdir: "2.allLen/{project}"
+      father: 
+        ipeaks:
+          - all
+          - opeaks
+        ibed:
+          - all
+          - ofrag
+      variables:
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/peak_stat.py"
+        oname: "{outdir}/{project}.{part}.stat"
+      params:
+        blank:
+          - "python {script} {ipeaks} {ibed} {oname} &" 
+      outparams:
+        oname: "{oname}"
+
+    linkbw:
+      need: true 
+      outdir: "4.Bw"
+      father:
+        ocr_bw:
+          - ocr
+          - obw
+        ocr_fcbw:
+          - ocr
+          - ofcbw
+        all_bw:
+          - all
+          - obw
+        all_fcbw:
+          - all
+          - ofcbw
+
+      params:
+        blank:
+          - "ln -snf {ocr_bw} {outdir} &&"
+          - "ln -snf {ocr_fcbw} {outdir} &&"
+          - "ln -snf {all_bw} {outdir} &&"
+          - "ln -snf {all_fcbw} {outdir} "
+
+    frag_len:
+      need: true
+      outdir: 5.frag_len
+      father:
+        raw_frag:
+          - merge_bed
+          - obed
+      variables:
+        raw_stat: "{outdir}/{project}.raw.length_distribution.txt"
+      params:
+        blank:
+          - "cat {raw_frag} | awk '{{print $3-$2}}' | sort  | uniq -c > {raw_stat} "
+
+  stat: 
+    stat_log_ocr:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        macs:
+          - ocr
+          - olog
+          - ","
+        peaks:
+          - frip_cal_ocr
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        script_dir: *SCRIPTS
+        script: "{script_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.ocr.stats"
+      params:
+        "python" : "{script}"
+        "-m": "{macs}"
+        "-l": "{peaks}"
+        "-p": "{projects}"
+        "-o": "{oname}"
+      outparams:
+        oname: "{oname}"
+
+    stat_log_all:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        macs:
+          - all
+          - olog
+          - ","
+        peaks:
+          - frip_cal_all
+          - oname
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        script_dir: *SCRIPTS
+        script: "{script_dir}/extract_log.py"
+        oname: "{outdir}/0.basic.all.stats"
+      params:
+        "python" : "{script}"
+        "-m": "{macs}"
+        "-l": "{peaks}"
+        "-p": "{projects}"
+        "-o": "{oname}"
+      outparams:
+        oname: "{oname}"
+
+    stat_echo_ocr:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      variables:
+        oname: "{outdir}/ocr_datainfo.csv"
+      iparams_list:
+        bed: 
+          - merge_bed
+          - obed
+          - ","
+        ocrpeak:
+          - ocr
+          - opeaks
+          - ","
+        ocrFinalPeak:
+          - ocr
+          - ofinalPeak
+          - ","     
+        bw:
+          - ocr
+          - obw
+          - ","
+        fcbw:
+          - ocr
+          - ofcbw
+          - ","
+        fragments:
+          - merge_bed
+          - obed
+          - ","
+        ocr_frag:
+          - ocr
+          - ofrag
+          - ","
+        project:
+          - raw
+          - project
+          - ","
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& echo project,{project} >> {oname}"
+          - "&& echo bed,{bed} >> {oname}"
+          - "&& echo bw,{bw} >> {oname}"
+          - "&& echo fcbw,{fcbw} >> {oname}"
+          - "&& echo ocrpeak,{ocrpeak} >> {oname}"
+          - "&& echo ocrFinalPeak,{ocrFinalPeak} >> {oname}"
+          - "&& echo ocr_frag,{ocr_frag} >> {oname}"
+          - "&& echo fragment,{fragments} >> {oname}"
+
+
+    stat_echo_all:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      variables:
+        oname: "{outdir}/all_datainfo.csv"
+      iparams_list:
+        bed: 
+          - merge_bed
+          - obed
+          - ","
+        allpeak:
+          - all
+          - opeaks
+          - ","
+        allFinalPeak:
+          - all
+          - ofinalPeak
+          - ","     
+        bw:
+          - all
+          - obw
+          - ","
+        fcbw:
+          - all
+          - ofcbw
+          - ","
+        fragments:
+          - merge_bed
+          - obed
+          - ","
+        all_frag:
+          - all
+          - ofrag
+          - ","
+        project:
+          - raw
+          - project
+          - ","
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& echo project,{project} >> {oname}"
+          - "&& echo bed,{bed} >> {oname}"
+          - "&& echo bw,{bw} >> {oname}"
+          - "&& echo fcbw,{fcbw} >> {oname}"
+          - "&& echo allpeak,{allpeak} >> {oname}"
+          - "&& echo allFinalPeak,{allFinalPeak} >> {oname}"
+          - "&& echo all_frag,{all_frag} >> {oname}"
+          - "&& echo fragment,{fragments} >> {oname}"
+
+
+       
