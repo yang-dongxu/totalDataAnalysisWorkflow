@@ -55,7 +55,6 @@ DEFAULT:
           - raw
           - ibeds
       variables:
-        obed: "{outdir}/{project}.bed"
         threads: 8
         obed: "{outdir}/{project}.fragment.bed"
         scripts_dir: *SCRIPTS
