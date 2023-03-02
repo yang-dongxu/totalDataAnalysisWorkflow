@@ -59,7 +59,7 @@ DEFAULT:
           - seq2
       variables:
         oseq1: "{outdir}/{project}.R1.fq.gz"
-        oseq2: "{outdir}/{project}.R1.fq.gz"
+        oseq2: "{outdir}/{project}.R2.fq.gz"
 
       params:
         blank:
