@@ -19,25 +19,20 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: atac_merge.pe.cmd.txt
+  cmd_name: chipseq_merge_woInput.pe.cmd.txt
   log_name: log
   outdir : 2.mergedSamples
   data_name: data.yaml
   order:
     - merge_bed
-    - cutsites
-    - all
-    - ocr
-    - nucleosome
-    - frip_cal_all
-    - frip_cal_ocr
-    - linkbw
-    - metagene_nuc
-    - frag_len
+    - peakcalling2
+    - toBwfrompeakcalling
+    - bwfc
+    - ceas
+    - frip_cal
 
   order_stat: 
-    - stat_log_all
-    - stat_log_ocr
+    - stat_log
     - stat_echo
 
   
@@ -67,35 +62,13 @@ DEFAULT:
       outparams:
         obed: "{obed}"
 
-
-    peakcalling14:
-      need: true 
-      path: "macs14 "
-      outdir: "2.peakcalling/{project}"
-      father:
-        ibed:
-          - merge_bed
-          - obed
-      cmd_part: 2
-      variables:
-        olog: "{outdir}/{project}.macs14.log"
-      params:
-        blank:
-          - "-f BAM -g mm -p 1e-5 --keep-dup all -n {outdir}/{project}.macs14 -t {ibed}  "
-          - "2>&1 | tee {olog} "
-          - "&& mv {outdir}/{project}_summits.bed {osummits}"
-      outparams:
-        opeaks: "{outdir}/{project}_peaks.macs14.bed"
-        opeakbed: "{outdir}/{project}.macs14_peaks.bed"
-        olog: "{olog}"
-      
     peakcalling2:
       need: true
       path: "macs2 callpeak"
       outdir: 2.peakcalling
       father:
         ibed:
-          - merge
+          - merge_bed
           - obed
       cmd_part: 2
       variables:
@@ -105,7 +78,7 @@ DEFAULT:
         osummits: "{outdir}/{project}/{project}.macs2_summits.bed"
       params:
         blank: 
-          - " -f BAMPE --SPMR -g mm -B -q 0.05 --keep-dup all -n {project}.macs2 --outdir  {outdir}/{project} -t {ibed} "
+          - " -f BEDPE --SPMR -g mm -B -q 0.05 --keep-dup all -n {project}.macs2 --outdir  {outdir}/{project} -t {ibed} "
           - "&& cat opeaks | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} "
           - " 2>&1 | tee {olog} &"
     
@@ -199,7 +172,7 @@ DEFAULT:
           - peakcalling2
           - opeakbed
         ibed:
-          - merge
+          - merge_bed
           - obed
       variables:
         scripts_dir: *SCRIPTS
@@ -243,6 +216,46 @@ DEFAULT:
         "-o": "{oname}"
       outparams:
         oname: "oname"
+
+    stat_echo: 
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      iparams_list:
+        macs:
+          - peakcalling2
+          - opeaks
+          - ","
+        bw:
+          - toBwfrompeakcalling
+          - obw 
+          - ","
+        bwfcs:
+          - bwfc
+          - obw
+          - ","
+        fragments:
+          - merge_bed
+          - obed
+          - ","
+        projects:
+          - raw
+          - project
+          - ","
+      variables:
+        oname: "{outdir}/0.basic.infos"
+      params:
+        blank:
+          - "echo > {oname} &&"
+          - "paste "
+          - " <(echo project,{projects} | tr ',' $'\\n' ) " 
+          - " <(echo narrowPeak,{macs} | tr ',' $'\\n' ) "
+          - " <(echo bw,{bw} | tr ',' $'\\n' ) "
+          - " <(echo bwfc,{bwfcs} | tr ',' $'\\n' ) "
+          - " <(echo fragments,{fragments} | tr ',' $'\\n' ) "
+          - " > {oname} "
+
+        
     
 
 
