@@ -26,7 +26,6 @@ DEFAULT:
   data_name: data.yaml
   order:
     - get_fq
-    - fastqc
     - trim_se
     - bowtie2
     - sort_and_markdup
@@ -35,9 +34,11 @@ DEFAULT:
     - peakcalling2
     - toBwfrompeakcalling
     - bwfc
+    - ceas
     - frip_cal
   
   order_stat: 
+    - fastqc
     - stat_log
     - stat_echo
 
@@ -62,22 +63,6 @@ DEFAULT:
           - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
       outparams:
         oseq1: "{oseq1}"
-
-    fastqc:
-      need: true
-      outdir: 1.trimed
-      path: fastqc
-      father:
-        iseq1:
-          - get_fq
-          - oseq1
-      params:
-        -t: 10
-        -o: "{outdir}"
-        blank: 
-          - "{iseq1}"
-      outparams:
-        outdir: "{outdir}"
    
     trim_se:
       path: " "
@@ -321,9 +306,63 @@ DEFAULT:
           - "python {script} {ipeaks} {ibam} {oname} &" 
       outparams:
         oname: "{oname}"
-    
+
+
+    ceas:
+      need: true 
+      path: ceasBW
+      outdir: "6.ceas"
+      cmd_part: 2
+      father:
+        ibw:
+          - toBwfrompeakcalling
+          - obw
+        ibed: 
+          - peakcalling2
+          - opeakbed
+      variables:
+        oname: "{outdir}/{project}/{project}"
+        bisize: 2000
+        db: *DB
+        chromsize: "{db}/mm10_main.chrom.sizes"
+      functions:
+        - "mkdirs('{outdir}/{project}')"
+      params:
+        -g: "{db}/mm10.refGene.sqlite3"
+        -l: "{chromsize}"
+        --dump: " "
+        --bg: " "
+        --bisizes: "{bisize}"
+        -w: "{ibw}"
+        -b: "{ibed}"
+        --name: "{oname}"
+      outparams:
+        ogene: "{oname}_dump_gene.txt"
+        oTSS: "{oname}_dump_TSS.txt"
+        oTTS: "{oname}_dump_TTS.txt"
+        opdf: "{oname}.pdf"
+
     
   stat: 
+
+    fastqc:
+      need: true
+      outdir: "1.trimed"
+      path: ""
+      iparams_list:
+        seq1_raw:
+          - get_fq
+          - oseq1
+          - " "
+        seq1_trim:
+          - trim_se
+          - oseq1
+          - " "
+      params:
+        blank:
+          - "fastqc -o {outdir} -t 8 {seq1_raw}  {seq1_trim}"
+
+
     stat_log:
       need: true 
       outdir: "0.stat"
@@ -348,7 +387,7 @@ DEFAULT:
       variables:
         script_dir: *SCRIPTS
         script: "{script_dir}/extract_log.py"
-        oname: "{outdir}/0.basic.stats"
+        oname: "{outdir}/0.basic_tf.stats"
       params:
         "python" : "{script}"
         "-b": "{bowtie2}"
@@ -364,13 +403,13 @@ DEFAULT:
       outdir: "0.stat"
       path: " "
       variables:
-        oname: "{outdir}/datainfo.csv"
+        oname: "{outdir}/datainfo_tf.csv"
       iparams_list:
         bam: 
           - sort_and_markdup
           - obam
           - ","
-        peak:
+        peak_macs14:
           - peakcalling14
           - opeaks
           - ","
@@ -392,13 +431,15 @@ DEFAULT:
           - ","
       params:
         blank:
-          - "echo '' > {oname} "
-          - "&& echo project,{project} >> {oname}"
-          - "&& echo bam,{bam} >> {oname}"
-          - "&& echo bw,{bw} >> {oname}"
-          - "&& echo peak,{peak} >> {oname}"
-          - "&& echo peak_macs2,{peak_macs2} >> {oname}"
-          - "&& echo fragment,{fragments} >> {oname}"
+          - "echo '' > {oname} &&"
+          - " paste "
+          - " <(echo project,{projects} | tr ',' $'\\n' ) "
+          - " <(echo bam,{bam} | tr ',' $'\\n' ) "
+          - " <(echo bw,{bw} | tr ',' $'\\n' ) "
+          - " <(echo peak_macs14,{peak} | tr ',' $'\\n' ) "
+          - " <(echo peak_macs2,{peak_macs2} | tr ',' $'\\n' ) "
+          - " <(echo fragment,{fragments} | tr ',' $'\\n' ) "
+
 
         
     

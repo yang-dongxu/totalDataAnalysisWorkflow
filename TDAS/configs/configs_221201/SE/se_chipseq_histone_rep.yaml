@@ -39,6 +39,7 @@ DEFAULT:
     - frip_cal
   
   order_stat: 
+    - fastqc
     - stat_log
     - stat_echo
 
@@ -63,22 +64,6 @@ DEFAULT:
           - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
       outparams:
         oseq1: "{oseq1}"
-
-    fastqc:
-      need: false
-      outdir: 1.trimed
-      path: fastqc
-      father:
-        iseq1:
-          - get_fq
-          - oseq1
-      params:
-        -t: 10
-        -o: "{outdir}"
-        blank: 
-          - "{iseq1}"
-      outparams:
-        outdir: "{outdir}"
 
 
     trim_se:
@@ -339,6 +324,24 @@ DEFAULT:
 
     
   stat: 
+
+    fastqc:
+      need: true
+      outdir: "1.trimed"
+      path: ""
+      iparams_list:
+        seq1_raw:
+          - get_fq
+          - oseq1
+          - " "
+        seq1_trim:
+          - trim_se
+          - oseq1
+          - " "
+      params:
+        blank:
+          - "fastqc -o {outdir} -t 8 {seq1_raw}  {seq1_trim}"
+  
     stat_log:
       need: true 
       outdir: "0.stat"
@@ -379,13 +382,13 @@ DEFAULT:
       outdir: "0.stat"
       path: " "
       variables:
-        oname: "{outdir}/datainfo.csv"
+        oname: "{outdir}/datainfo_histone.csv"
       iparams_list:
         bam: 
           - sort_and_markdup
           - obam
           - ","
-        peak:
+        peak_macs14:
           - peakcalling14
           - opeaks
           - ","
@@ -407,12 +410,13 @@ DEFAULT:
           - ","
       params:
         blank:
-          - "echo '' > {oname} "
-          - "&& echo project,{project} >> {oname}"
-          - "&& echo bam,{bam} >> {oname}"
-          - "&& echo bw,{bw} >> {oname}"
-          - "&& echo peak,{peak} >> {oname}"
-          - "&& echo peak_macs2,{peak_macs2} >> {oname}"
-          - "&& echo fragment,{fragments} >> {oname}"
+          - "echo '' > {oname} &&"
+          - " paste "
+          - " <(echo project,{projects} | tr ',' $'\\n' ) "
+          - " <(echo bam,{bam} | tr ',' $'\\n' ) "
+          - " <(echo bw,{bw} | tr ',' $'\\n' ) "
+          - " <(echo peak_macs14,{peak} | tr ',' $'\\n' ) "
+          - " <(echo peak_macs2,{peak_macs2} | tr ',' $'\\n' ) "
+          - " <(echo fragment,{fragments} | tr ',' $'\\n' ) "
 
         
