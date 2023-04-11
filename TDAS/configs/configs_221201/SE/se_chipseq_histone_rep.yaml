@@ -366,7 +366,7 @@ DEFAULT:
       variables:
         script_dir: *SCRIPTS
         script: "{script_dir}/extract_log.py"
-        oname: "{outdir}/0.basic.se.stats"
+        oname: "{outdir}/0.basic.se.histone.stats"
       params:
         "python" : "{script}"
         "-b": "{bowtie2}"
