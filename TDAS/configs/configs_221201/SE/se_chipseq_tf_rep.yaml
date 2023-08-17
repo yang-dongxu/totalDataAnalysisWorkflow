@@ -196,9 +196,9 @@ DEFAULT:
       params:
         blank: 
           - " -f BAM --SPMR -g mm -B -q 0.05 --keep-dup all -n {project}.macs2 --outdir  {outdir}/{project} -t {ibam} "
-          - " 2>&1 | tee {olog} "
-
           - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} && "
+          - " 2>&1 | tee {olog} & "
+
       outparams:
         opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
