@@ -1,12 +1,14 @@
+# version 20221201
 env_variables:
   - &DB "${{DB}}/mm10"
   - &SCRIPTS "${{SCRIPTS}}"
 
 seq_info_format:
-- ","
+- ";"
 - project
 - idir
 - seq1
+- seq2
 #- seq_order
 #- config_id
 seq_order:
@@ -18,19 +20,17 @@ config_ids:
 
 DEFAULT:
   cmd_fusion_order: ['1', 2,3,"STAT"]
-  cmd_name: chipseq.se.cmd.txt
+  cmd_name: pe_chipseq_tf_cmd.txt
   log_name: log
   outdir : 1.byReplicates
   data_name: data.yaml
   order:
     - get_fq
     - fastqc
-    - trim_se
+    - trim_pe
     - bowtie2
-    - to_bam
     - sort_and_markdup
     - to_fragment
-    - peakcalling14
     - peakcalling2
     - toBwfrompeakcalling
     - bwfc
@@ -39,7 +39,6 @@ DEFAULT:
   
   order_stat: 
     - stat_log
-    - stat_echo
 
   
   workflow:
@@ -54,15 +53,23 @@ DEFAULT:
         seq1:
           - raw
           - seq1
+        seq2:
+          - raw
+          - seq2
       variables:
         oseq1: "{outdir}/{project}.R1.fq.gz"
+        oseq2: "{outdir}/{project}.R2.fq.gz"
       params:
         blank:
           - "cd {idir} "
+          - "&& chmod 555 {seq1} "
+          - "&& chmod 555 {seq2} "
           - "&& echo {seq1} | tr , ' ' | xargs cat > {oseq1} "
+          - "&& echo {seq2} | tr , ' ' | xargs cat > {oseq2} "
       outparams:
         oseq1: "{oseq1}"
-
+        oseq2: "{oseq2}"
+          
     fastqc:
       need: false
       outdir: 1.trimed
@@ -71,47 +78,20 @@ DEFAULT:
         iseq1:
           - get_fq
           - oseq1
+        iseq2:
+          - get_fq
+          - oseq2
       params:
         -t: 10
         -o: "{outdir}"
         blank: 
           - "{iseq1}"
+          - "{iseq2}"
       outparams:
         outdir: "{outdir}"
-
-
-    trim_se:
-      path: " "
-      check_paths: []
-      cmd_part: '1'
-      father:
-        iseq1:
-        - get_fq
-        - oseq1
-      need: true
-      outdir: 1.trimed
-      variables:
-        log: "{outdir}/{project}.{part}.log"
-        oseq1: "{outdir}/{project}.trimed.SE.fq.gz"
-        json: "{outdir}/{project}.report.json"
-        html: "{outdir}/{project}.report.html"
-        threads: 10 # pe, each fastq will use threads seperately
-      outparams:
-        oseq1: "{oseq1}"
-        json: "{json}"
-      params:
-        blank:
-          - "fastp -i {iseq1} -o {oseq1} -e 20 -j {json} -h {html} -p -R '{project}' -w {threads} -D"
-          # e: average error rage
-          # p: over expressed seq analyze 
-          # R: title of report
-          # D: deduplicate
-          - " 2>&1 | tee {log}  "
-          - "&& rm {iseq1} "
-
-
+   
     trim_pe:
-      path: trim_galore
+      path: " "
       check_paths: []
       cmd_part: '1'
       father:
@@ -121,27 +101,29 @@ DEFAULT:
         iseq2:
         - get_fq
         - oseq2
-      need: false
+      need: true
       outdir: 1.trimed
       variables:
         log: "{outdir}/{project}.{part}.log"
+        oseq1: "{outdir}/{project}.trimed.R1.fq.gz"
+        oseq2: "{outdir}/{project}.trimed.R2.fq.gz"
+        json: "{outdir}/{project}.report.fastp.json"
+        html: "{outdir}/{project}.report.fastp.html"
+        threads: 4 # pe, each fastq will use threads seperately
       outparams:
-        oseq1: "{outdir}/{project}_val_1.fq.gz"
-        oseq2: "{outdir}/{project}_val_2.fq.gz"
-        example: '{project}/hello'
+        oseq1: "{oseq1}"
+        oseq2: "{oseq2}"
+        json: "{json}"
       params:
-        ' ': '{iseq1}  {iseq2}'
-        --fastqc: ''
-        --fastqc_args: '"--threads 8 "'
-        --length: '20'
-        --paired: ''
-        --quality: '20'
-        -o: '{outdir}'
-        --cores: 2
-        --basename: "{project}"
         blank:
-          - " 2>&1  | tee {log}"
-      
+          - "fastp -i {iseq1} -I {iseq2} -o {oseq1} -O {oseq2} -e 20 -j {json} -h {html} -p -R '{project}' -w {threads} -D"
+          # e: average error rage
+          # p: over expressed seq analyze 
+          # R: title of report
+          # D: deduplicate
+          - " 2>&1 | tee {log}  "
+          - "&& rm {iseq1} {iseq2}"
+
 
     bowtie2:
       need: true
@@ -149,8 +131,11 @@ DEFAULT:
       path: ""
       father: 
         iseq1:
-          - trim_se
+          - trim_pe
           - oseq1
+        iseq2:
+          - trim_pe
+          - oseq2
       variables:
         olog: "{outdir}/{project}.mapping.log"
         osam: "{outdir}/{project}.sam"
@@ -159,37 +144,21 @@ DEFAULT:
         db: *DB
       params:
         blank:
-          - "bowtie2 -q -x {db}/mm10_main --no-discordant --threads {threads} -U {iseq1}  -S {osam} 2>&1 | tee {olog} "
-          - " && samtools view --threads {threads}  -q 30 -o {obam} {osam} "
+          - "bowtie2 -q -x {db}/mm10_main --no-discordant --threads {threads} -1 {iseq1} -2 {iseq2} -S {osam} 2>&1 | tee {olog} "
+          - " && samtools view --threads {threads} -f 0x2 -q 30 -o {obam} {osam} "
           - " && rm {osam} "
       outparams:
         osam: "{osam}"
         obam: "{obam}"
         olog: "{olog}"
-          
-    to_bam:
-      need: true
-      path: ""
-      outdir: 2.mapping
-      father: 
-        ibam:
-          - bowtie2
-          - obam
-      variables:
-        obam: "{outdir}/{project}.bam"
-      params:
-        blank:
-          - " "
-      outparams:
-        obam: "{obam}"
-    
+   
     sort_and_markdup: 
       need: true
       path: " "
       outdir: 3.cleanBam
       father:
         ibam:
-          - to_bam
+          - bowtie2
           - obam
       variables:
         sort_bam: "{outdir}/{project}.sort"
@@ -202,6 +171,8 @@ DEFAULT:
           - "sambamba markdup -r -t 10 {ibam} {sort_bam} &&"
           - "sambamba sort -t 10 {sort_bam} -o {cleanbam} &&"
           - "rm {sort_bam} "
+    
+      
       outparams:
         obam: "{cleanbam}"
 
@@ -219,13 +190,13 @@ DEFAULT:
         script: "{scripts_dir}/bamtobedpe.sh"
       params:
         blank:
-          - "bedtools bamtobed -i {ibam} |  sort -k1,1 -k2,2n  > {obed}"
+          - "bash {script} {ibam} 8 | sort -k1,1 -k2,2n > {obed}"
       outparams:
         obed: "{obed}"
 
     peakcalling14:
       need: true 
-      path: ""
+      path: "macs14 "
       outdir: "4.peakcalling/{project}"
       father:
         ibam:
@@ -233,41 +204,39 @@ DEFAULT:
           - obam
       cmd_part: 2
       variables:
-        olog: "{outdir}/{project}_macs14.log"
+        olog: "{outdir}/{project}.macs14.log"
       params:
-        blank:
-          - "macs14 -f BAM -g mm -p 1e-5 --keep-dup all -n {outdir}/{project}_macs14 -t {ibam} "
-          - "2>&1 | tee {olog} &"
+        blank: 
+          - "-f BAM -g mm -p 1e-5 --keep-dup all -n  {outdir}/{project}.macs14 -t {ibam}  2>&1 | tee {olog} & "
       outparams:
-        opeaks: "{outdir}/{project}_macs14_peaks.bed"
-        osummits: "{outdir}/{project}_macs14_summits.bed"
-        obdg: "{outdir}/{project}_macs14_treat_pileup.bdg"
+        opeaks: "{outdir}/{project}.macs14_peaks.bed"
+        opeakbed: "{outdir}/{project}.macs14_peaks.bed"
+        osummits: "{outdir}/{project}.macs14_summits.bed"
         olog: "{olog}"
-      
+
+    
     peakcalling2:
       need: true
-      path: ""
-      outdir: "4.peakcalling/{project}"
+      path: "macs2 callpeak"
+      outdir: 4.peakcalling
       father:
         ibam:
           - sort_and_markdup
           - obam
       cmd_part: 2
       variables:
-        olog: "{outdir}/{project}_macs2.log"
-        opeaks: "{outdir}/{project}_macs2_peaks.narrowPeak"
-        opeakbed: "{outdir}/{project}_macs2_peaks.bed"
+        olog: "{outdir}/{project}/{project}.macs2.log"
+        opeaks: "{outdir}/{project}/{project}.macs2_peaks.narrowPeak"
+        opeakbed: "{outdir}/{project}/{project}_peaks.macs2.bed"
       params:
-        blank:
-          - "macs2 callpeak -f BAM --SPMR -g mm -B -q 0.05 --nomodel --extsize 147 --keep-dup 1 -n {project}_macs2 --outdir {outdir} -t {ibam} "
-          - "2>&1 | tee {olog} "
-          - "&& cat {opeaks} | cut -f 1-4,7 > {opeakbed} &"
-    
+        blank: 
+          - " -f BAMPE --SPMR -g mm -B -q 0.05 --keep-dup all -n {project}.macs2 --outdir  {outdir}/{project} -t {ibam} 2>&1 | tee {olog}  "
+          - "&& cat {opeaks} | cut -f 1-5 | sort -k1,1 -k2,2n > {opeakbed} & "
       outparams:
-        opeaks: "{outdir}/{project}_macs2_peaks.narrowPeak"
+        opeaks: "{opeaks}"
         opeakbed: "{opeakbed}"
-        osummits: "{outdir}/{project}_macs2_summits.bed"
-        obdg: "{outdir}/{project}_macs2_treat_pileup.bdg"
+        osummits: "{outdir}/{project}/{project}.macs2_summits.bed"
+        obdg: "{outdir}/{project}/{project}.macs2_treat_pileup.bdg"
         olog: "{olog}"
     
     toBwfrompeakcalling:
@@ -285,7 +254,7 @@ DEFAULT:
         chromSize: "{db}/mm10_main.chrom.sizes"
       params:
         blank: 
-          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b"  > {ibdg}.tmp '
+          - 'sort -k1,1 -k2,2n {ibdg} | grep  -e  "chr[0-9XYM]*\b" |  bedClip stdin {chromSize} {ibdg}.tmp '
           - "&& bedGraphToBigWig {ibdg}.tmp {chromSize} {obw} "
           - "&& rm -f  {ibdg}.tmp &"
       outparams:
@@ -308,7 +277,8 @@ DEFAULT:
         obw: "{outdir}/{project}.fc.bw"
       params:
         blank:
-          - "bash {script} {ibw} {chromSize} {obw}"
+          - "ln -snf {ibw} {outdir}/{project}.bw"
+          - "&& bash {script} {ibw} {chromSize} {obw} & "
       outparams:
         obw: "{obw}"
 
@@ -369,7 +339,6 @@ DEFAULT:
       outparams:
         oname: "{oname}"
     
-
     
   stat: 
     stat_log:
@@ -396,7 +365,7 @@ DEFAULT:
       variables:
         script_dir: *SCRIPTS
         script: "{script_dir}/extract_log.py"
-        oname: "{outdir}/0.basic.se.stats"
+        oname: "{outdir}/0.basic.stats"
       params:
         "python" : "{script}"
         "-b": "{bowtie2}"
@@ -407,45 +376,5 @@ DEFAULT:
       outparams:
         oname: "oname"
     
-    stat_echo:
-      need: true 
-      outdir: "0.stat"
-      path: " "
-      variables:
-        oname: "{outdir}/datainfo.csv"
-      iparams_list:
-        bam: 
-          - sort_and_markdup
-          - obam
-          - ","
-        peak:
-          - peakcalling14
-          - opeaks
-          - ","
-        peak_macs2:
-          - peakcalling2
-          - opeaks
-          - ","          
-        bw:
-          - bwfc
-          - obw
-          - ","
-        fragments:
-          - to_fragment
-          - obed
-          - ","
-        project:
-          - raw
-          - project
-          - ","
-      params:
-        blank:
-          - "echo '' > {oname} "
-          - "&& echo project,{project} >> {oname}"
-          - "&& echo bam,{bam} >> {oname}"
-          - "&& echo bw,{bw} >> {oname}"
-          - "&& echo peak,{peak} >> {oname}"
-          - "&& echo peak_macs2,{peak_macs2} >> {oname}"
-          - "&& echo fragment,{fragments} >> {oname}"
 
-        
+

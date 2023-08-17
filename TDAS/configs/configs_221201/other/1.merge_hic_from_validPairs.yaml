@@ -1,0 +1,187 @@
+env_variables:
+  - &DB "${{DB}}/mm10/mm10"
+  - &SCRIPTS "${{SCRIPTS}}"
+
+seq_info_format:
+- ";"
+- project
+- idir
+- validPairs
+#- seq_order
+#- config_id
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids: 
+  - DEFAULT
+
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: merge_hic_validPairs.cmd.txt
+  log_name: log
+  outdir : 3.mergedSamples
+  data_name: data.yaml
+  order:
+    - merge_pairs
+    - formatTohic
+    - formatTomcool
+    - call_compartments
+    - call_tads
+
+  order_stat: 
+    - stat_echo
+
+  
+  workflow:
+
+    merge_pairs:
+      need: true 
+      path: ""
+      outdir: "1.merged_pairs"
+      father:
+        idir: 
+          - raw
+          - idir
+        ibeds:
+          - raw
+          - validPairs
+      variables:
+        oname: "{outdir}/{project}.merged.validPairs.gz"
+
+      params:
+        blank:
+          - "cd {idir} "
+          - "&& echo {ibeds} | tr , ' ' | xargs cat  | awk '$11>=30' | awk '$12>=30'| cut -f 1-12 | gzip - >  {oname} "
+      outparams:
+        oname: "{oname}"
+
+    formatTohic:
+      need: true 
+      path: ""
+      outdir: "2.hics"
+      father:
+        ipairs:
+          - merge_pairs
+          - oname 
+      variables:
+        ohic: "{outdir}/{project}.hic"
+        DB: *DB
+        chromsize: "{DB}.chrom.sizes"
+        script: "hicpro2juicebox.sh"
+        juicer_tools: "~/source/juicer_tools"
+
+      params:
+        blank:
+          - "{script} -i {ipairs} -g {chromsize} -j {juicer_tools} -o {ohic}"
+      outparams:
+        ohic: "{ohic}"
+
+    formatTomcool:
+      need: true 
+      path: ""
+      outdir: "3.mcool"
+      father:
+        ihic:
+          - formatTohic
+          - ohic 
+      variables:
+        omcool: "{outdir}/{project}.mcool"
+
+      params:
+        blank:
+          - "hic2cool convert -r 0 {ihic} {omcool}"
+          - "hic2cool convert -r 0 hics/$i mcools/$i.mcool"
+      outparams:
+        omcool: "{omcool}"
+
+    call_compartments:
+      need: true 
+      path: ""
+      outdir: "4.compartments"
+      father:
+        imcool:
+          - formatTomcool
+          - omcool
+      variables:
+        res: 100000
+
+      params:
+        blank:
+          - "cooler balance -r {res} {imcool}::/resolutions/{res} -p 10"
+          - " && cooltools call-compartments {imcool}::/resolutions/{res} -o {outdir}/{project}_{res} --bigwig"
+      outparams:
+        obw: "{outdir}/{project}_{res}.cis.bw"
+
+    call_tads:
+      need: true
+      path: ""
+      outdir: "5.tads"
+      father:
+        imcool:
+          - formatTomcool
+          - omcool
+      variables:
+        res: 50000
+        window: 1000000
+        raw_bed: "{outdir}/{project}_{res}_{window}_raw.bed"
+        boundary_thresh: 0.25
+        boundary_bed: "{outdir}/{project}_{res}_{window}_boundary.bed"
+        insulation_bw: "{outdir}/{project}_{res}_{window}_insulation.bw"
+        DB: *DB
+        chromsize: "{DB}.chrom.sizes"
+
+      params:
+        blank:
+          - "cooler balance -r {res} {imcool}::/resolutions/{res} -p 10"
+          - " && cooltools diamond-insulation {imcool}::/resolutions/{res} {window} > {raw_bed}"
+          - " && cat {raw_bed} | awk '$4 == \"False\"'  | awk '$NF!=\"nan\" ' | awk '$NF > {boundary_threse}' | cut -f 1-3 | sort -k1,1 -k2,2n > {boundary_bed}  "
+          - " && cat {raw_bed} | awk '$4 == \"False\"' | sort -k1,1 -k2,2n | wigToBigWig stdin {chromsize} {insulation_bw} & "
+      outparams:
+        obw_insulation: "{insulation_bw}" 
+        obed_tadboundary: "{boundary_bed}"
+
+  stat:
+    stat_echo:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      variables:
+        oname: "{outdir}/samples.csv"
+      iparams_list:
+        mcool: 
+          - formatTomcool
+          - omcool
+          - ","
+        insulation:
+          - call_tads
+          - obw_insulation
+          - ","
+        tadboundary:
+          - call_tads
+          - obed_tadboundary
+          - ","
+        hic:
+          - formatTohic
+          - ohic
+          - ","
+        project:
+          - raw
+          - project
+          - ","
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& paste <(echo project,{project} | tr , $'\\n') "
+          - " <(echo mcool,{mcool} | tr , $'\\n') "
+          - " <(echo hic,{hic} | tr , $'\\n') "
+          - " <(echo insulation,{insulation} | tr , $'\\n') "
+          - " <(echo tadboundary,{tadboundary} | tr , $'\\n') "
+          - " > {oname}"
+          
+
+
+
+        
+
