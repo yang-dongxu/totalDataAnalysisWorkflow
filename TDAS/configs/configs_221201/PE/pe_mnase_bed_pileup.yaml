@@ -1,0 +1,128 @@
+env_variables:
+  - &DB "${{DB}}/mm10"
+  - &SCRIPTS "${{SCRIPTS}}"
+
+seq_info_format:
+  - ";"
+  - project
+  - idir
+  - seqs
+
+seq_order:
+  - 1
+  - 2
+  - 3
+config_ids: 
+  - DEFAULT
+
+DEFAULT:
+  cmd_fusion_order: ['1', 2,3,"STAT"]
+  cmd_name: mnase.pileup.cmd.txt
+  log_name: log
+  outdir : mnase_out
+  data_name: data.yaml
+  order:
+    - get_merged_bed
+    - fragment_selection
+    - pileup
+
+  order_stat: {}
+
+  workflow:
+    get_merged_bed:
+      need: true
+      cmd_part: "1"
+      outdir: "1.fragments"
+      father:
+        beds:
+          - raw
+          - seqs
+        idir:
+          - raw
+          - idir
+      variables:
+        obed: "{outdir}/{project}.fragment.bed"
+      params:
+        blank:
+          - "cd {idir} && "
+          - " echo {beds} | tr , ' ' | xargs cat |awk '$5>10 || NF==3' |  sort -k1,1 -k2,2n | uniq   > {obed}"
+      outparams:
+        obed: "{obed}"
+
+    fragment_selection:
+      need: true
+      outdir: "2.clean_fragments"
+      father: 
+        frag: 
+          - get_merged_bed
+          - obed
+      variables:
+        max_len: 2000 ## source from deeptools default params
+        min_len: 0 ## source from deeptools default params
+        flank: 37 ## how many base of center flank used in each fragment
+        obed_filtered: "{outdir}/{project}.filtered.bed"
+        scripts_dir: *SCRIPTS
+        script: "{scripts_dir}/bamtobedpe.sh"
+        script_reads: "{scripts_dir}/bamtoreads.sh"
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+      params:
+        blank:
+          - "cat {frag} | awk '$3-$2<{max_len} ' |  awk '$3-$2>{min_len} ' | "
+          - "   awk 'BEGIN{{OFS=\"\t\"}}{{mean=int(($2+$3)/2);$2=mean-{flank}; $3=mean+{flank};print $0 }}' | awk '$2>0'| cut -f 1-3 | sort -k1,1 -k2,2n > {obed_filtered}  "
+      outparams:
+        obed: "{obed_filtered}"
+
+    pileup: 
+      need: true 
+      path: " "
+      outdir: "3.bw"
+      father:
+        ibed:
+          - fragment_selection
+          - obed
+      variables:
+        db: *DB
+        chromSize: "{db}/mm10_main.chrom.sizes"
+        bdg: "{outdir}/{project}.bdg"
+        obw: "{outdir}/{project}.bw"
+      params:
+        blank:
+          - "n=`cat {ibed} | wc -l  ` "
+          - "&& c=`echo \"1000000/$n \" | bc  -l ` "
+          - "&& bedtools genomecov -bga -i {ibed} -scale $c -g {chromSize} > {bdg}"
+          - "&&  bedGraphToBigWig {bdg} {chromSize} {obw} "
+          - "&& rm {bdg} &"
+      outparams:
+        obw: "{obw}"
+
+  stat: 
+    stat_echo:
+      need: true 
+      outdir: "0.stat"
+      path: " "
+      variables:
+        oname: "{outdir}/datainfo.csv"
+      iparams_list:
+        bw:
+          - pileup
+          - obw
+          - ","
+        fragments:
+          - fragment_selection
+          - obed
+          - ","
+        project:
+          - raw
+          - project
+          - ","
+      params:
+        blank:
+          - "echo '' > {oname} "
+          - "&& echo project,{project} >> {oname}"
+          - "&& echo bw,{bw} >> {oname}"
+          - "&& echo fragment,{fragments} >> {oname}"
+
+
+    
+

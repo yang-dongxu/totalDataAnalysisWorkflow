@@ -1,6 +1,7 @@
 env_variables:
   - &DB "${{DB}}/mm10/mm10"
   - &SCRIPTS "${{SCRIPTS}}"
+  - &juicer_tools "/mnt/Storage/home/yangdongxu/sources/juicer_tools_2.13.06.jar"
 
 seq_info_format:
 - ";"
@@ -48,12 +49,12 @@ DEFAULT:
           - raw
           - validPairs
       variables:
-        oname: "{outdir}/{project}.merged.validPairs.gz"
+        oname: "{outdir}/{project}.merged.allValidPairs"
 
       params:
         blank:
           - "cd {idir} "
-          - "&& echo {ibeds} | tr , ' ' | xargs cat  | awk '$11>=30' | awk '$12>=30'| cut -f 1-12 | gzip - >  {oname} "
+          - "&& echo {ibeds} | tr , ' ' | xargs zcat  | awk '$11>=20' | awk '$12>=20'| cut -f 1-12 >  {oname} "
       outparams:
         oname: "{oname}"
 
@@ -70,7 +71,7 @@ DEFAULT:
         DB: *DB
         chromsize: "{DB}.chrom.sizes"
         script: "hicpro2juicebox.sh"
-        juicer_tools: "~/source/juicer_tools"
+        juicer_tools: *juicer_tools
 
       params:
         blank:
@@ -83,17 +84,33 @@ DEFAULT:
       path: ""
       outdir: "3.mcool"
       father:
-        ihic:
-          - formatTohic
-          - ohic 
+        ipairs:
+          - merge_pairs
+          - oname 
       variables:
+        res_high: 1000
+        res_all: "1000,5000,10000,25000,50000,100000,250000,500000,1000000,2500000,5000000,10000000"
+        ocool: "{outdir}/{project}.cool"
         omcool: "{outdir}/{project}.mcool"
+        contacts_tmp: "{outdir}/{project}.contacts.tmp.txt"
+        contacts_sorted_tmp: "{outdir}/{project}.contacts.sorted.tmp.txt.gz"
+        DB: *DB
+        chromsize: "{DB}_main.chrom.sizes"
+        chrombinstmp: "{outdir}/{project}.chrombins.tmp.bed"
+        log: "{outdir}/{project}.formatToMcool.log"
+
 
       params:
         blank:
-          - "hic2cool convert -r 0 {ihic} {omcool}"
-          - "hic2cool convert -r 0 hics/$i mcools/$i.mcool"
+          - "awk '{{OFS=\"\\t\";print $2,$3,$4,$5,$6,$7,1}}' {ipairs} | sed -e 's/+/1/g' -e 's/-/16/g' >  {contacts_tmp}"
+          - "&& cooler csort --nproc 10 -c1 1 -p1 2 -s1 3 -c2 4 -p2 5 -s2 6 "
+          - " -o {contacts_sorted_tmp} {contacts_tmp} {chromsize}"
+          - "&& cooler makebins {chromsize} {res_high} > {chrombinstmp}"
+          - "&& cooler cload pairix --nproc 10 {chrombinstmp} {contacts_sorted_tmp} {ocool}"
+          - "&& cooler zoomify --balance  --nproc 10 -r {res_all} {ocool} -o {omcool} "
+          - "&& rm {contacts_tmp} {contacts_sorted_tmp} {chrombinstmp} {contacts_sorted_tmp}.px2 "
       outparams:
+        ocool: "{ocool}"
         omcool: "{omcool}"
 
     call_compartments:
@@ -109,8 +126,7 @@ DEFAULT:
 
       params:
         blank:
-          - "cooler balance -r {res} {imcool}::/resolutions/{res} -p 10"
-          - " && cooltools call-compartments {imcool}::/resolutions/{res} -o {outdir}/{project}_{res} --bigwig"
+          - " cooltools call-compartments {imcool}::/resolutions/{res} -o {outdir}/{project}_{res} --bigwig"
       outparams:
         obw: "{outdir}/{project}_{res}.cis.bw"
 
@@ -134,9 +150,8 @@ DEFAULT:
 
       params:
         blank:
-          - "cooler balance -r {res} {imcool}::/resolutions/{res} -p 10"
-          - " && cooltools diamond-insulation {imcool}::/resolutions/{res} {window} > {raw_bed}"
-          - " && cat {raw_bed} | awk '$4 == \"False\"'  | awk '$NF!=\"nan\" ' | awk '$NF > {boundary_threse}' | cut -f 1-3 | sort -k1,1 -k2,2n > {boundary_bed}  "
+          - " cooltools diamond-insulation {imcool}::/resolutions/{res} {window} > {raw_bed}"
+          - " && cat {raw_bed} | awk '$4 == \"False\"'  | awk '$NF!=\"nan\" ' | awk '$NF > {boundary_thresh}' | cut -f 1-3 | sort -k1,1 -k2,2n > {boundary_bed}  "
           - " && cat {raw_bed} | awk '$4 == \"False\"' | sort -k1,1 -k2,2n | wigToBigWig stdin {chromsize} {insulation_bw} & "
       outparams:
         obw_insulation: "{insulation_bw}" 
