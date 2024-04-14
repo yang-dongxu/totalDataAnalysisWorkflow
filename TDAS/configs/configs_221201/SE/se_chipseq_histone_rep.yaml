@@ -404,7 +404,7 @@ DEFAULT:
           - to_fragment
           - obed
           - ","
-        project:
+        projects:
           - raw
           - project
           - ","
@@ -412,10 +412,10 @@ DEFAULT:
         blank:
           - "echo '' > {oname} &&"
           - " paste "
-          - " <(echo project,{projects} | tr ',' $'\\n' ) "
+          - " <(echo projects,{projects} | tr ',' $'\\n' ) "
           - " <(echo bam,{bam} | tr ',' $'\\n' ) "
           - " <(echo bw,{bw} | tr ',' $'\\n' ) "
-          - " <(echo peak_macs14,{peak} | tr ',' $'\\n' ) "
+          - " <(echo peak_macs14,{peak_macs14} | tr ',' $'\\n' ) "
           - " <(echo peak_macs2,{peak_macs2} | tr ',' $'\\n' ) "
           - " <(echo fragment,{fragments} | tr ',' $'\\n' ) "
 
